@@ -26,29 +26,29 @@ services:
       - DISABLE_SIGNUP:false
       
       # URLs principais
-      - NEXTAUTH_URL=https://builder.seudominio.com
-      - NEXT_PUBLIC_VIEWER_URL=https://viewer.seudominio.com
+      - NEXTAUTH_URL=https://builder.senaia.in
+      - NEXT_PUBLIC_VIEWER_URL=https://viewer.senaia.in
       
       # SMTP Google (configure com suas credenciais)
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=587
       - SMTP_SECURE=false
-      - SMTP_USERNAME=seuemail@gmail.com
+      - SMTP_USERNAME=marcelu.phd@gmail.com
       - SMTP_PASSWORD=psniysbjhlfrfeou
-      - NEXT_PUBLIC_SMTP_FROM=Typebot <seuemail@gmail.com>
+      - NEXT_PUBLIC_SMTP_FROM=Typebot <marcelu.phd@gmail.com>
       - SMTP_AUTH_DISABLED=false
       
       # S3 Minio (ajuste conforme sua configuração)
       - S3_ACCESS_KEY=vbPgNvelNqsYEQ1IWEyl
       - S3_SECRET_KEY=1qIP0YthUVEUgePYuiu0b1MOq8NHeS4qWzDbEhnc
       - S3_BUCKET=typebot
-      - S3_ENDPOINT=files.seudominio.com
+      - S3_ENDPOINT=files.senaia.in
       - S3_PORT=9000
       - S3_SSL=true
       - S3_REGION=us-east-1
       
       # Configurações de plano (opcional)
-      - ADMIN_EMAIL=seuemail@gmail.com
+      - ADMIN_EMAIL=marcelu.phd@gmail.com
       - DEFAULT_WORKSPACE_PLAN=UNLIMITED
       
       # Node.js optimizations
@@ -74,7 +74,7 @@ services:
         
         # Builder service
         - "traefik.http.services.typebot-builder.loadbalancer.server.port=3000"
-        - "traefik.http.routers.typebot-builder.rule=Host(`builder.seudominio.com`)"
+        - "traefik.http.routers.typebot-builder.rule=Host(`builder.senaia.in`)"
         - "traefik.http.routers.typebot-builder.tls=true"
         - "traefik.http.routers.typebot-builder.tls.certresolver=letsencrypt"
         - "traefik.http.routers.typebot-builder.entrypoints=websecure"
@@ -103,14 +103,14 @@ services:
       - ENCRYPTION_SECRET=A+etXuevOpBgVwjATL1kEBScj1ALciYH
       
       # URLs principais
-      - NEXTAUTH_URL=https://builder.seudominio.com
-      - NEXT_PUBLIC_VIEWER_URL=https://viewer.seudominio.com
+      - NEXTAUTH_URL=https://builder.senaia.in
+      - NEXT_PUBLIC_VIEWER_URL=https://viewer.senaia.in
       
       # S3 Minio (mesmas configurações do builder)
       - S3_ACCESS_KEY=vbPgNvelNqsYEQ1IWEyl
       - S3_SECRET_KEY=1qIP0YthUVEUgePYuiu0b1MOq8NHeS4qWzDbEhnc
       - S3_BUCKET=typebot
-      - S3_ENDPOINT=files.seudominio.com
+      - S3_ENDPOINT=files.senaia.in
       - S3_PORT=9000
       - S3_SSL=true
       - S3_REGION=us-east-1
@@ -122,9 +122,9 @@ services:
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=587
       - SMTP_SECURE=false
-      - SMTP_USERNAME=seuemail@gmail.com
+      - SMTP_USERNAME=marcelu.phd@gmail.com
       - SMTP_PASSWORD=psniysbjhlfrfeou
-      - NEXT_PUBLIC_SMTP_FROM=Typebot <seuemail@gmail.com>
+      - NEXT_PUBLIC_SMTP_FROM=Typebot <marcelu.phd@gmail.com>
       - SMTP_AUTH_DISABLED=false
     
     # Health check usando Node.js (sempre disponível)
@@ -144,7 +144,7 @@ services:
         
         # Viewer service
         - "traefik.http.services.typebot-viewer.loadbalancer.server.port=3000"
-        - "traefik.http.routers.typebot-viewer.rule=Host(`viewer.seudominio.com`)"
+        - "traefik.http.routers.typebot-viewer.rule=Host(`viewer.senaia.in`)"
         - "traefik.http.routers.typebot-viewer.tls=true"
         - "traefik.http.routers.typebot-viewer.tls.certresolver=letsencrypt"
         - "traefik.http.routers.typebot-viewer.entrypoints=websecure"

@@ -74,14 +74,14 @@ services:
         - "traefik.swarm.network=traefik_public"
         
         # Router principal
-        - "traefik.http.routers.lightrag2.rule=Host(`lightrag2.seudominio.com`)"
+        - "traefik.http.routers.lightrag2.rule=Host(`lightrag2.senaia.in`)"
         - "traefik.http.routers.lightrag2.entrypoints=websecure"
         - "traefik.http.routers.lightrag2.tls.certresolver=letsencrypt"
         - "traefik.http.services.lightrag2.loadbalancer.server.port=9621"
         
         # Middleware para seguir redirects
-        - "traefik.http.middlewares.lightrag2-redirect.redirectregex.regex=^https://lightrag2.seudominio.com/$$"
-        - "traefik.http.middlewares.lightrag2-redirect.redirectregex.replacement=https://lightrag2.seudominio.com/webui/"
+        - "traefik.http.middlewares.lightrag2-redirect.redirectregex.regex=^https://lightrag2.senaia.in/$$"
+        - "traefik.http.middlewares.lightrag2-redirect.redirectregex.replacement=https://lightrag2.senaia.in/webui/"
         
        
 

@@ -149,7 +149,7 @@ psql -h localhost -p 5432 -U app_user -d lightrag -c "SELECT 1;"
 
 ### 8.3. Deploy da Stack LightRAG
 - **Substituir** `SUA_CHAVE_OPENAI_AQUI` pela sua chave OpenAI real
-   - **Substituir** `lightrag2.seudominio.com` pelo seu dominio real 
+   - **Substituir** `lightrag2.senaia.in` pelo seu dominio real 
 - **Clicar** em "Deploy the stack"
 - **Aguardar** inicialização (2-3 minutos)
 

@@ -19,8 +19,8 @@ services:
       - MINIO_ROOT_PASSWORD=1:7khB-=3lZ7
       
       # URLs para integração com Traefik
-      - MINIO_SERVER_URL=https://files.seudominio.com
-      - MINIO_BROWSER_REDIRECT_URL=https://minio.seudominio.com
+      - MINIO_SERVER_URL=https://files.senaia.in
+      - MINIO_BROWSER_REDIRECT_URL=https://minio.senaia.in
       
       # Configurações de performance e segurança
       - MINIO_COMPRESSION_ENABLE=on
@@ -28,7 +28,7 @@ services:
       - MINIO_COMPRESSION_MIME_TYPES=application/pdf,application/msword,application/vnd.ms-excel
       
       # Configurações de API
-      - MINIO_API_CORS_ALLOW_ORIGIN=https://chat.seudominio.com,https://files.seudominio.com,https://minio.seudominio.com,evo.seudominio.com
+      - MINIO_API_CORS_ALLOW_ORIGIN=https://chat.senaia.in,https://files.senaia.in,https://minio.senaia.in,evo.senaia.in
       - MINIO_API_REQUESTS_MAX=1000
       - MINIO_API_REQUESTS_DEADLINE=30s
       
@@ -60,20 +60,20 @@ services:
           #cpus: "0.5"
           #memory: 512M
       
-      # Labels para Traefik - API S3 (files.seudominio.com)
+      # Labels para Traefik - API S3 (files.senaia.in)
       labels:
         - traefik.enable=true
         - traefik.swarm.network=traefik_public
         
         # Router para API S3 (porta 9000)
-        - traefik.http.routers.minio-s3.rule=Host(`files.seudominio.com`)
+        - traefik.http.routers.minio-s3.rule=Host(`files.senaia.in`)
         - traefik.http.routers.minio-s3.entrypoints=websecure
         - traefik.http.routers.minio-s3.tls.certresolver=letsencrypt
         - traefik.http.routers.minio-s3.service=minio-s3
         - traefik.http.services.minio-s3.loadbalancer.server.port=9000
         
         # Router para Console Web (porta 9001)
-        - traefik.http.routers.minio-console.rule=Host(`minio.seudominio.com`)
+        - traefik.http.routers.minio-console.rule=Host(`minio.senaia.in`)
         - traefik.http.routers.minio-console.entrypoints=websecure
         - traefik.http.routers.minio-console.tls.certresolver=letsencrypt
         - traefik.http.routers.minio-console.service=minio-console
@@ -84,7 +84,7 @@ services:
         - traefik.http.middlewares.minio-headers.headers.customrequestheaders.X-Forwarded-Port=443
         - traefik.http.middlewares.minio-headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE
         - traefik.http.middlewares.minio-headers.headers.accesscontrolallowheaders=*
-        - traefik.http.middlewares.minio-headers.headers.accesscontrolalloworiginlist=https://chat.seudominio.com,https://files.seudominio.com,https://minio.seudominio.com,evo.seudominio.com
+        - traefik.http.middlewares.minio-headers.headers.accesscontrolalloworiginlist=https://chat.senaia.in,https://files.senaia.in,https://minio.senaia.in,evo.senaia.in
         - traefik.http.middlewares.minio-headers.headers.accesscontrolmaxage=100
         - traefik.http.middlewares.minio-headers.headers.addvaryheader=true
         

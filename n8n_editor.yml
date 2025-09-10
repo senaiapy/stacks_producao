@@ -46,10 +46,10 @@ services:
       # Configuração do Endereço do N8N - ALTERE DOMÍNIOS
       
       - N8N_PORT=5678
-      - N8N_HOST=editor.seudominio.com
-      - N8N_EDITOR_BASE_URL=https://editor.seudominio.com/
+      - N8N_HOST=editor.senaia.in
+      - N8N_EDITOR_BASE_URL=https://editor.senaia.in/
       - N8N_PROTOCOL=https
-      - WEBHOOK_URL=https://workflow.seudominio.com/
+      - WEBHOOK_URL=https://workflow.senaia.in/
       - N8N_ENDPOINT_WEBHOOK=webhook
       
       
@@ -105,9 +105,9 @@ services:
       - N8N_EMAIL_MODE=smtp
       - N8N_SMTP_HOST=smtp.gmail.com
       - N8N_SMTP_PORT=587
-      - N8N_SMTP_USER=seuemail@gmail.com
+      - N8N_SMTP_USER=marcelu.phd@gmail.com
       - N8N_SMTP_PASS=suasenha
-      - N8N_SMTP_SENDER=seuemail@gmail.com
+      - N8N_SMTP_SENDER=marcelu.phd@gmail.com
       - N8N_SMTP_SSL=false
       - N8N_SMTP_SECURE=false
       - N8N_SMTP_TLS=true
@@ -135,13 +135,13 @@ services:
         - traefik.swarm.network=traefik_public
         
         # Router para editor
-        - traefik.http.routers.n8n-editor.rule=Host(`editor.seudominio.com`)
+        - traefik.http.routers.n8n-editor.rule=Host(`editor.senaia.in`)
         - traefik.http.routers.n8n-editor.entrypoints=websecure
         - traefik.http.routers.n8n-editor.tls.certresolver=letsencrypt
         - traefik.http.services.n8n-editor.loadbalancer.server.port=5678
         
         # Router para webhooks (mesmo serviço, rota diferente)
-        - traefik.http.routers.n8n-webhooks.rule=Host(`workflow.seudominio.com`)
+        - traefik.http.routers.n8n-webhooks.rule=Host(`workflow.senaia.in`)
         - traefik.http.routers.n8n-webhooks.entrypoints=websecure
         - traefik.http.routers.n8n-webhooks.tls.certresolver=letsencrypt
         - traefik.http.routers.n8n-webhooks.service=n8n-editor

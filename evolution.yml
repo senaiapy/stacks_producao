@@ -17,7 +17,7 @@ services:
       - PORT=8080
       
       # URLs e configurações básicas
-      - SERVER_URL=https://evo.seudominio.com
+      - SERVER_URL=https://evo.senaia.in
       - DEL_INSTANCE=false
       - DEL_TEMP_INSTANCES=false
       - LANGUAGE=pt_BR
@@ -139,7 +139,7 @@ services:
       - S3_SECRET_KEY=f5EfUSx00zpFofC7KYyzFgDugEPOiWSrmV3puEdd
       - S3_BUCKET=evolution
       - S3_PORT=443
-      - S3_ENDPOINT=files.seudominio.com
+      - S3_ENDPOINT=files.senaia.in
       - S3_USE_SSL=true
       
       # Autenticação
@@ -183,7 +183,7 @@ services:
         
         # Evolution API service
         - "traefik.http.services.evolution-v2.loadbalancer.server.port=8080"
-        - "traefik.http.routers.evolution-v2.rule=Host(`evo.seudominio.com`)"
+        - "traefik.http.routers.evolution-v2.rule=Host(`evo.senaia.in`)"
         - "traefik.http.routers.evolution-v2.tls=true"
         - "traefik.http.routers.evolution-v2.tls.certresolver=letsencrypt"
         - "traefik.http.routers.evolution-v2.entrypoints=websecure"

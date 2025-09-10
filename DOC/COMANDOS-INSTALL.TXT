@@ -124,7 +124,7 @@ chatwoot 3030
 evolution 8080
 redis 6379
 postgres 5432
-portainer 9000
+portainer 9000 9001 9443
 traefik 8888
 n8n 5678
 rabbitmq 5672

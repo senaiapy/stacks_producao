@@ -48,9 +48,9 @@ services:
       # Configuração do Webhook
       
       - N8N_PORT=5678
-      - N8N_HOST=editor.seudominio.com
+      - N8N_HOST=editor.senaia.in
       - N8N_PROTOCOL=https
-      - WEBHOOK_URL=https://workflow.seudominio.com/
+      - WEBHOOK_URL=https://workflow.senaia.in/
       - N8N_ENDPOINT_WEBHOOK=webhook
       
       
@@ -72,9 +72,9 @@ services:
       - N8N_EMAIL_MODE=smtp
       - N8N_SMTP_HOST=smtp.gmail.com
       - N8N_SMTP_PORT=587
-      - N8N_SMTP_USER=seuemail@gmail.com
+      - N8N_SMTP_USER=marcelu.phd@gmail.com
       - N8N_SMTP_PASS=suasenha
-      - N8N_SMTP_SENDER=seuemail@gmail.com
+      - N8N_SMTP_SENDER=marcelu.phd@gmail.com
       - N8N_SMTP_SSL=false
       - N8N_SMTP_SECURE=false
       - N8N_SMTP_TLS=true
@@ -100,7 +100,7 @@ services:
         - traefik.swarm.network=traefik_public
         
         # Router para Webhook
-        - traefik.http.routers.n8n_webhook.rule=Host(`workflow.seudominio.com`)
+        - traefik.http.routers.n8n_webhook.rule=Host(`workflow.senaia.in`)
         - traefik.http.routers.n8n_webhook.entrypoints=websecure
         - traefik.http.routers.n8n_webhook.tls.certresolver=letsencrypt
         - traefik.http.routers.n8n_webhook.service=n8n_webhook

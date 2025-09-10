@@ -15,9 +15,31 @@ Stack profissional para produção contendo todas as ferramentas necessárias pa
 - **Chatwoot** - Plataforma de atendimento
 - **Evolution API** - Integração WhatsApp Business
 
+- **Supabase* - banco dados remoto
 ---
 
 ## ⚙️ Instalação Inicial
+
+
+### 0. preparo systema e aapanel
+```bash
+
+sudo timedatectl set-timezone America/Asuncion
+# sudo timedatectl set-timezone America/Sao_Paulo
+sudo apt-get update ; apt-get install -y apparmor-utils
+
+hostnamectl set-hostname paraguays
+
+#add new host
+sudo nano /etc/hosts
+  127.0.0.1 paraguays
+
+
+#instalar aapenel
+URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
+
+
+```
 
 ### 1. Instalação Docker
 ```bash
@@ -27,8 +49,11 @@ sudo sh get-docker.sh
 
 ### 2. Configurar Docker Swarm
 ```bash
+#docker swarm leave --force
+
 # Substituir pelo IP do seu servidor
 docker swarm init --advertise-addr=SEU_IP_AQUI
+docker swarm init --advertise-addr=217.79.184.8
 ```
 
 ### 3. Criar Redes Docker
@@ -38,6 +63,10 @@ docker network create --driver=overlay traefik_public
 
 # Rede interna (aplicações)
 docker network create --driver=overlay app_network
+
+# rede para os containers:
+docker network create --driver=overlay network_public
+
 ```
 
 ### 4. Criar Diretório MinIO
@@ -53,9 +82,20 @@ sudo chown -R $USER:docker /var/data/minio
 ### 1. Infraestrutura Base
 ```bash
 # 1. Portainer (gerenciamento)
+mkdir -p /wwww/wwwroot/portainer
+cd /www/wwwroot/portainer
 docker stack deploy -c portainer.yml portainer
+#volume located in 
+# /var/lib/docker/volumes
+
+#if receive error to login
+docker service ls
+docker service update --force portainer_portainer
 
 # 2. Traefik (reverse proxy)
+#add stack
+#create new stack
+#copy and paste traefik.yml
 docker stack deploy -c traefik.yml traefik
 ```
 
@@ -337,7 +377,22 @@ Contribuições são bem-vindas! Por favor:
 
 ---
 
-**🚀 Desenvolvido por Anderson Lemes**  
-**📺 YouTube**: [AndersonLemes](https://www.youtube.com/@andersonslemes) 
-**💼 LinkedIn**: [AndersonLemes](https://www.linkedin.com/in/anderson-lemes-713335250/)
+**🚀 Desenvolvido por Marcelo Anjos**  
+**📺 YouTube**: [AndersonLemes](https://www.youtube.com/@andersonsleme) 
+**💼 LinkedIn**: [AndersonLemes](https://www.linkedin.com/in/marcelo-anjos- +595993547294/)
 # stacks_producao
+
+
+####### PORTS IN USE
+
+chatwoot 3030
+evolution 8080
+redis 6379
+postgres 5432
+portainer 9000 9001 9443
+traefik 8888 8443
+n8n 5678
+rabbitmq 5672
+strapi 1337
+supabase 8000
+supabase-studio 3032

@@ -19,11 +19,12 @@ services:
     volumes:
       - portainer_data:/data
     ports:
-       - "9000:9000"  # Descomente para acesso direto HTTP
+       #- "9000:9000"  # Descomente para acesso direto HTTP
        - "9443:9443"  # Descomente para acesso direto HTTPS
     networks:
       - traefik_public
       - app_network
+      #- agent_network
     deploy:
       mode: replicated
       replicas: 1
@@ -33,12 +34,15 @@ services:
         # Versão simplificada (aproveita redirect global do Traefik)
         #- traefik.enable=true
         #- traefik.swarm.network=traefik_public
-        #- traefik.http.routers.portainer.rule=Host(`painel.seudominio.com`)
+        #- traefik.http.routers.portainer.rule=Host(`painel.senaia.in`)
         #- traefik.http.routers.portainer.entrypoints=websecure
         #- traefik.http.routers.portainer.tls.certresolver=letsencrypt
         #- traefik.http.services.portainer.loadbalancer.server.port=9000
 
 networks:
+ # agent_network:
+ #   driver: overlay
+ #   attachable: true
   traefik_public:
     external: true
   app_network:
