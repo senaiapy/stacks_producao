@@ -1,0 +1,133 @@
+#DEFINIR FUSO HORARIO
+sudo timedatectl set-timezone America/Sao_Paulo
+
+sudo timedatectl set-timezone America/Asuncion
+
+
+#instalar aapenel
+URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
+
+
+
+Guia de Instalação
+🚀 Instalação Evolution V2
+1️⃣ Atualização do Sistema e Instalação de Dependências
+Abra o terminal e execute o seguinte comando:
+sudo apt-get update ; apt-get install -y apparmor-utils
+
+
+2️⃣ Definição do Nome do Servidor
+Você pode substituir manager1 por um nome de sua escolha:
+hostnamectl set-hostname manager1
+
+
+3️⃣ Configuração do Arquivo /etc/hosts
+Edite o arquivo de hosts com o comando:
+nano /etc/hosts
+
+Altere a linha do localhost para o nome definido no passo anterior (exemplo: manager1):
+127.0.0.1 manager1
+
+Depois de editar, salve e saia (Ctrl+X, pressione Y e Enter).
+
+4️⃣ Instalação do Docker
+Execute este comando para instalar o Docker:
+curl -fsSL https://get.docker.com | bash
+
+
+5️⃣ Inicialização do Swarm
+Após a instalação, inicie o Docker Swarm com:
+
+docker swarm leave --force
+
+docker swarm init
+
+
+6️⃣ Criação da Rede
+Agora, crie a rede para os containers:
+docker network create --driver=overlay network_public
+
+
+7️⃣ Configuração do Arquivo traefik.yaml
+Abra o editor de texto:
+nano traefik.yaml
+
+Após editar o arquivo, salve e saia (Ctrl+X, pressione Y e Enter).
+
+8️⃣ Implantação do Stack
+Por fim, rode o comando abaixo para implantar o Traefik:
+docker stack deploy --prune --resolve-image always -c traefik.yaml traefik
+
+
+9️⃣ Instalação do Portainer
+Execute o seguinte comando para instalar o Portainer:
+docker run -d -p 9000:9000 --name portainer --restart always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest --http-enabled
+
+
+💡 Dica: Verifique se os comandos foram executados corretamente antes de prosseguir para os próximos passos.
+
+ip:9000 portainer
+
+@450A...0628....portainer
+
+getstarted- local - stack - postgres
+
+ POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+ America/Asuncion
+
+ disable acess control
+ deploy
+
+ the same with redis, evolution but in this change
+
+
+    - AUTHENTICATION_API_KEY=289828C4C977415CAAFCCE10F7D57E11
+    - SERVER_URL=https://evolution.senaia-bank.in
+    - traefik.http.routers.evolution_v2.rule=Host(`evolution.senaia-bank.in`) ## Url da aplicação
+
+add website aapanel  evolution.senaia-bank.in
+127.0.0.1:9000
+proxy reverse http://serverip:port
+
+add website aapanel  evolution.senaia-bank.in
+proxy reverse http://serverip:port
+
+################ N8N
+
+add docker.yaml
+
+conect with postgress and create a n8n database
+
+#Acessar o console do container do Postgres
+psql -U postgres
+
+#Crie o Banco de Dados do N8N
+CREATE DATABASE n8ndb;
+
+
+#  #### install n8n-evolution-api
+#  #settings->plugins->install plugin
+#  
+#  # n8n-nodes-evolution-api
+#  # @devlikeapro/n8n-nodes-chatwoot
+
+####### PORTAINER RUNNING IN http://217.79.189.223:9000
+####### AND ACCESS FOR https://portainer.senaia-bank.in
+####### BUT FOR MANAGER AND CREATE STACKS ONLY USE HTTP
+
+
+
+
+####### PORTS IN USE
+
+chatwoot 3030
+evolution 8080
+redis 6379
+postgres 5432
+portainer 9000
+traefik 8888
+n8n 5678
+rabbitmq 5672
+strapi 1337
+supabase 8000
+supabase-studio 3032
