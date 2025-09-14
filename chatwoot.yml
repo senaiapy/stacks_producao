@@ -45,8 +45,8 @@ services:
       # Storage configuration (MinIO S3-compatible)
       - ACTIVE_STORAGE_SERVICE=s3_compatible
       - STORAGE_BUCKET_NAME=chatwoot
-      - STORAGE_ACCESS_KEY_ID=O2fjz7e74qdTIBtqaWnC
-      - STORAGE_SECRET_ACCESS_KEY=L97CdSr9kkRov2sBBOcX7oQe2T1K1JCCbQwhuPIX
+      - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
+      - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
       - STORAGE_REGION=us-east-1
       - STORAGE_ENDPOINT=http://minio:9000  # ✅ Acesso interno funciona
       - STORAGE_FORCE_PATH_STYLE=true
