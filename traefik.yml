@@ -16,12 +16,12 @@ services:
       #   mode: host
 
          # HTTP (porta 8888)
-      - target: 8888
+      - target: 80
         published: 8888
         protocol: tcp
         mode: host
       # HTTPS (porta 8443) 
-      - target: 8443
+      - target: 443
         published: 8443
         protocol: tcp
         mode: host
@@ -46,10 +46,10 @@ services:
       # - --api.insecure=true
       
       # Entrypoints (pontos de entrada)
-      #- --entryPoints.web.address=:80
-      #- --entryPoints.websecure.address=:443
-      - --entryPoints.web.address=:8888
-      - --entryPoints.websecure.address=:8443
+      - --entryPoints.web.address=:80
+      - --entryPoints.websecure.address=:443
+      #- --entryPoints.web.address=:8888
+      #- --entryPoints.websecure.address=:8443
 
       # Provider Docker Swarm
       - --providers.swarm=true
