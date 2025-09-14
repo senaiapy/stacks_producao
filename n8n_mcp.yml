@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   n8n_mcp_api:
-    image: n8nio/n8n:1.101.1
+    image: n8nio/n8n:1.111.0
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     command: start
     user: "1000:1000"
@@ -20,13 +20,13 @@ services:
       # Configurações Gerais do N8N
       
       # ALTERE: Gere uma nova chave forte
-      - N8N_ENCRYPTION_KEY=KRpMlPWMnUPpJ4Ehy6sHuYYweuLes4RT
+      - N8N_ENCRYPTION_KEY=KRpMlPWMaRCeL0Ehy6sHuYYweuLes4RT
       - NODE_ENV=production
       - N8N_METRICS=true
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_PAYLOAD_SIZE_MAX=16
       - N8N_LOG_LEVEL=info
-      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - GENERIC_TIMEZONE=America/Asuncion
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       
       # Task Runners (habilitados para performance)
@@ -41,8 +41,8 @@ services:
       - DB_POSTGRESDB_DATABASE=n8n_database              
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_USER=app_user                      
-      - DB_POSTGRESDB_PASSWORD=4hwM-An0+14dC=z 
+      - DB_POSTGRESDB_USER=chatwoot_database
+      - DB_POSTGRESDB_PASSWORD=Ma1x1x0x!!Ma1x1x0x!! 
       
       
       # Configuração do Endereço do N8N - ALTERE DOMÍNIOS
@@ -61,7 +61,7 @@ services:
       - QUEUE_BULL_REDIS_HOST=redis
       - QUEUE_BULL_REDIS_PORT=6379
       - QUEUE_BULL_REDIS_DB=2
-      - QUEUE_BULL_REDIS_PASSWORD=1H9PvFRv1BAc  # MESMA SENHA DO REDIS
+      - QUEUE_BULL_REDIS_PASSWORD=J40geWtC08VoaUqoZ  # MESMA SENHA DO REDIS
       - EXECUTIONS_TIMEOUT=3600      # 1 hora
       - EXECUTIONS_TIMEOUT_MAX=7200  # 2 horas
       
@@ -110,7 +110,7 @@ services:
       - N8N_SMTP_HOST=smtp.gmail.com
       - N8N_SMTP_PORT=587
       - N8N_SMTP_USER=marcelu.phd@gmail.com
-      - N8N_SMTP_PASS=suasenha
+      - N8N_SMTP_PASS=dmaatsjzgzxqxmil
       - N8N_SMTP_SENDER=marcelu.phd@gmail.com
       - N8N_SMTP_SSL=false
       - N8N_SMTP_SECURE=false

@@ -9,7 +9,7 @@ services:
       redis-server
       --port 6379
       --appendonly no
-      --requirepass "J40geW0tC8VoaUqoZ"
+      --requirepass "J40geWtC08VoaUqoZ"
       --maxmemory 400mb
       --maxmemory-policy allkeys-lru
       --save ""

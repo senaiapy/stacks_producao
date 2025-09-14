@@ -17,7 +17,7 @@ services:
       - PORT=3000
       
       # Database
-      - DATABASE_URL=postgresql://app_user:4hwM-An0+14dC=z@postgres:5432/typebot_database
+      - DATABASE_URL=postgresql://app_user:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/typebot_database
       
       # Encryption (CRÍTICO - mude para um valor seguro)
       - ENCRYPTION_SECRET=A+etXuevOpBgVwjATL1kEBScj1ALciYH
@@ -34,7 +34,7 @@ services:
       - SMTP_PORT=587
       - SMTP_SECURE=false
       - SMTP_USERNAME=marcelu.phd@gmail.com
-      - SMTP_PASSWORD=psniysbjhlfrfeou
+      - SMTP_PASSWORD=dmaatsjzgzxqxmil
       - NEXT_PUBLIC_SMTP_FROM=Typebot <marcelu.phd@gmail.com>
       - SMTP_AUTH_DISABLED=false
       
@@ -90,7 +90,7 @@ services:
     
     environment:
       # Database (mesma do builder)
-      - DATABASE_URL=postgresql://app_user:4hwM-An0+14dC=z@postgres:5432/typebot_database
+      - DATABASE_URL=postgresql://app_user:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/typebot_database
 
        # Network binding - CRÍTICO para Docker
       - HOSTNAME=0.0.0.0

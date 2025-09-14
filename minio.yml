@@ -1,3 +1,5 @@
+# mkdir -p /var/data/minio
+
 version: "3.8"
 
 services:
@@ -15,8 +17,8 @@ services:
     
     environment:
       # Credenciais root - ALTERE ESTAS SENHAS!
-      - MINIO_ROOT_USER=anderson
-      - MINIO_ROOT_PASSWORD=1:7khB-=3lZ7
+      - MINIO_ROOT_USER=marceluphd
+      - MINIO_ROOT_PASSWORD=1:7khB-=2898
       
       # URLs para integração com Traefik
       - MINIO_SERVER_URL=https://files.senaia.in
@@ -84,7 +86,7 @@ services:
         - traefik.http.middlewares.minio-headers.headers.customrequestheaders.X-Forwarded-Port=443
         - traefik.http.middlewares.minio-headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE
         - traefik.http.middlewares.minio-headers.headers.accesscontrolallowheaders=*
-        - traefik.http.middlewares.minio-headers.headers.accesscontrolalloworiginlist=https://chat.senaia.in,https://files.senaia.in,https://minio.senaia.in,evo.senaia.in
+        - traefik.http.middlewares.minio-headers.headers.accesscontrolalloworiginlist=https://chat.senaia.in,https://files.senaia.in,https://minio.senaia.in,evo.senaia.in,evo.senaia.in
         - traefik.http.middlewares.minio-headers.headers.accesscontrolmaxage=100
         - traefik.http.middlewares.minio-headers.headers.addvaryheader=true
         

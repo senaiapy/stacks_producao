@@ -1,4 +1,6 @@
-#CREATE EXTENSION IF NOT EXISTS vector;
+# INIT DATABASE
+# psql -U chatwoot_database -d chatwoot_database
+# CREATE EXTENSION IF NOT EXISTS vector;
 
 version: '3.8'
 
@@ -7,46 +9,45 @@ services:
     image: pgvector/pgvector:pg16
 
     #ports:
-      #- 5432:5432 
-    
+    #  - 5432:5432 
+   
     # Configurações de ambiente
     environment:
       # Configurações básicas - ALTERE AQUI
-      POSTGRES_DB: lightrag
-      POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: "P4p=eb3-8&7bE"  # Senha com caracteres seguros
-      
+      POSTGRES_DB: chatwoot_database
+      POSTGRES_USER: chatwoot_database
+      POSTGRES_PASSWORD: "Ma1x1x0x!!Ma1x1x0x!!"  # Senha com caracteres seguros
+     
       # Configurações de locale (usando C.UTF-8 que está disponível)
       POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
-      
+     
       # Timezone
-      TZ: America/Sao_Paulo
-      PGTZ: America/Sao_Paulo
-    
+      TZ: America/Asuncion
+      PGTZ: America/Asuncion
+   
     # Volumes para persistência
     volumes:
-      volumes:
       # Dados principais do PostgreSQL
       - postgres_data:/var/lib/postgresql/data
       - postgres_lib:/usr/lib/postgresql/16/lib  # Bibliotecas compiladas
       - postgres_extensions:/usr/share/postgresql/16/extension  # Scripts SQL
-      
+     
       # Backup local (opcional)
       # - /opt/postgres/backups:/backups
-    
+   
     # Porta (comentada para produção - usar via rede interna)
     # ports:
       # - "5432:5432"  # Descomente apenas para debug/desenvolvimento
-    
+   
     # Redes
     networks:
       - app_network  # Rede para aplicações se conectarem
-    
+   
     # Configurações de deploy
     deploy:
       mode: replicated
       replicas: 1
-      
+     
       # Recursos (ajuste conforme seu hardware)
       resources:
         limits:
@@ -55,12 +56,12 @@ services:
         #reservations:
           #cpus: '1.0'      # Mínimo 1 CPU garantida
           #memory: 2G       # Mínimo 2GB RAM garantida
-      
+     
       # Constraints para execução
       placement:
         constraints:
           - node.role == manager  # Só roda em nós manager
-      
+     
       # Configurações de atualização
       update_config:
         parallelism: 1           # Atualiza um container por vez
@@ -68,14 +69,14 @@ services:
         order: stop-first        # Para o antigo antes de iniciar novo
         failure_action: rollback # Volta versão anterior se falhar
         monitor: 60s             # Monitora por 60s após atualização
-      
+     
       # Política de restart
       restart_policy:
         condition: on-failure    # Só reinicia em caso de falha
-        delay: 10s              # Aguarda 10s antes de reiniciar
-        max_attempts: 3         # Máximo 3 tentativas de restart
-        window: 120s            # Janela de 2min para contar tentativas
-    
+        delay: 10s               # Aguarda 10s antes de reiniciar
+        max_attempts: 3          # Máximo 3 tentativas de restart
+        window: 120s             # Janela de 2min para contar tentativas
+   
     # Verificação de saúde
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app_user -d chatwoot_database"]
@@ -83,7 +84,7 @@ services:
       timeout: 10s     # Timeout de 10 segundos
       retries: 3       # 3 tentativas antes de marcar como unhealthy
       start_period: 60s # Aguarda 60s após start para começar verificações
-    
+   
     # Configurações otimizadas do PostgreSQL
     command: >
       postgres
@@ -114,7 +115,7 @@ services:
       -c log_lock_waits=on
       -c log_temp_files=0
       -c log_autovacuum_min_duration=0
-      -c timezone='America/Sao_Paulo'
+      -c timezone='America/Asuncion'
 
 # Redes
 networks:

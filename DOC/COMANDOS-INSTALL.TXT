@@ -7,6 +7,7 @@ sudo timedatectl set-timezone America/Asuncion
 #instalar aapenel
 URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
 
+#### NOT INSTALL NGINX OR OTHER APPS ####
 
 
 Guia de Instalação
@@ -80,29 +81,51 @@ getstarted- local - stack - postgres
 
  the same with redis, evolution but in this change
 
+# in postgress acess terminal and access user and create db
+psql -U chatwoot_database -d chatwoot_database
+CREATE EXTENSION IF NOT EXISTS vector;
 
-    - AUTHENTICATION_API_KEY=289828C4C977415CAAFCCE10F7D57E11
-    - SERVER_URL=https://evolution.senaia-bank.in
-    - traefik.http.routers.evolution_v2.rule=Host(`evolution.senaia-bank.in`) ## Url da aplicação
+# in minio access portainer folder and create folder
+mkdir -p /var/data/minio
 
-add website aapanel  evolution.senaia-bank.in
-127.0.0.1:9000
-proxy reverse http://serverip:port
+#create buckets login in minio.senaia.in
+buckets -> create buckets 
+evolution
+chatwoot
 
-add website aapanel  evolution.senaia-bank.in
-proxy reverse http://serverip:port
+################ mail google
+#access google account (2 factors enabled) in security in search app password or senha app dreate a paste name
+# n8n_full copy and past without spaces.
 
-################ N8N
+################ N8N #################
 
-add docker.yaml
 
 conect with postgress and create a n8n database
 
 #Acessar o console do container do Postgres
-psql -U postgres
+psql -U chatwoot_database -d chatwoot_database
 
 #Crie o Banco de Dados do N8N
-CREATE DATABASE n8ndb;
+CREATE DATABASE n8n_database;
+CREATE DATABASE evolution_database;
+
+# to list all dbs
+ \l
+
+#  #### install n8n-evolution-api
+#  #settings->plugins->install plugin
+#  
+#  # n8n-nodes-evolution-api
+#  # @devlikeapro/n8n-nodes-chatwoot
+
+## go to docker hub, search for n8n TAGS and take the last version an palace in
+# yml files n8nio/n8n:1.111.0
+
+#add STACKS
+n8n_editor
+n8n_mcp 
+n8n_webhook 
+n8n_worker 
 
 
 #  #### install n8n-evolution-api
@@ -111,12 +134,22 @@ CREATE DATABASE n8ndb;
 #  # n8n-nodes-evolution-api
 #  # @devlikeapro/n8n-nodes-chatwoot
 
-####### PORTAINER RUNNING IN http://217.79.189.223:9000
-####### AND ACCESS FOR https://portainer.senaia-bank.in
-####### BUT FOR MANAGER AND CREATE STACKS ONLY USE HTTP
+################ CHATWOOT #################
+SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 
+
+# goto minio create a chatwoot api key
+
+
+################ EVOLUTION #################
 
 
 
+############################################################
+####### PORTAINER RUNNING IN http://217.79.184.8:9000
+####### AND ACCESS FOR https://painel.senaia.in
+
+
+##### ANTES DE RODAR SENPRE VERIFICAR SE ESTAO LBERADOS DOMINIOS NO DNSCHECKER PARA EVITAR BLOQUEIO ######
 
 ####### PORTS IN USE
 
@@ -131,3 +164,34 @@ rabbitmq 5672
 strapi 1337
 supabase 8000
 supabase-studio 3032
+minio 9000 interno
+
+
+postgress porta 5432
+user chatwoot_database
+db chatwoot_database
+password Ma1x1x0x!!Ma1x1x0x!!
+
+redis porta 6379
+password   J40geWtC08VoaUqoZ      
+
+- MINIO_ROOT_USER=marceluphd
+      - MINIO_ROOT_PASSWORD=1:7khB-=2898
+      
+      # URLs para integração com Traefik
+      - MINIO_SERVER_URL=https://files.senaia.in
+      - MINIO_BROWSER_REDIRECT_URL=https://minio.senaia.in
+      
+      gmail password to connect dmaatsjzgzxqxmil
+      mardelu.phd
+
+user marcelu.phd@gmail.com
+pass @450A...0628....n8n
+
+
+- N8N_ENCRYPTION_KEY=KRpMlPWMaRCeL0Ehy6sHuYYweuLes4RT
+
+#CHATWOOT
+      - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
+      - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
+SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 

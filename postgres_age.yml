@@ -18,8 +18,8 @@ services:
       POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
       
       # Timezone
-      TZ: America/Sao_Paulo
-      PGTZ: America/Sao_Paulo
+      TZ: America/Asuncion
+      PGTZ: America/Asuncion
     
     # Volumes para persistência
     volumes:
@@ -105,7 +105,7 @@ services:
       -c log_lock_waits=on
       -c log_temp_files=0
       -c log_autovacuum_min_duration=0
-      -c timezone='America/Sao_Paulo'
+      -c timezone='America/Asuncion'
 
 # Redes
 networks:

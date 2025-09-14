@@ -43,7 +43,7 @@ services:
       WHITELIST_PATHS: "/health,/api/version"
       
       # Redis para cache
-      REDIS_URL: "redis://:J40geW0tC8VoaUqoZ@redis:6379/3"
+      REDIS_URL: "redis://:J40geWtC08VoaUqoZ@redis:6379/3"
     
     volumes:
       - lightrag_data2:/app/data
