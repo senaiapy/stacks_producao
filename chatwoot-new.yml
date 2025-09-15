@@ -1,0 +1,243 @@
+version: "3.8"
+
+services:
+  # Serviço principal Rails do Chatwoot
+  chatwoot_rails:
+    image: chatwoot/chatwoot:v4.2.0
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network      # Conecta com PostgreSQL/Redis/MinIO
+      - traefik_public   # Exposição via Traefik
+
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+
+      # Base configuration - ALTERE ESTA CHAVE!
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=https://chat.senaia.in
+      - FORCE_SSL=true
+      - ENABLE_ACCOUNT_SIGNUP=false
+
+      # Database configuration (PostgreSQL)
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_STATEMENT_TIMEOUT=14s
+      - RAILS_MAX_THREADS=5
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage configuration (MinIO S3-compatible)
+      - ACTIVE_STORAGE_SERVICE=s3_compatible
+      - STORAGE_BUCKET_NAME=chatwoot
+      - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
+      - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
+      - STORAGE_REGION=us-east-1
+      - STORAGE_ENDPOINT=http://minio:9000  # Acesso interno via network
+      - STORAGE_FORCE_PATH_STYLE=true
+      - DIRECT_UPLOADS_ENABLED=false  # Arquivos passam pelo Chatwoot
+
+      # Email configuration (Gmail SMTP)
+      - MAILER_SENDER_EMAIL=Chatwoot <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=edmoauhradsarvmw
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=chat.senaia.in
+
+      # Security and performance
+      - RAILS_LOG_TO_STDOUT=true
+      - LOG_LEVEL=info
+      - LOG_SIZE=500
+      - ENABLE_RACK_ATTACK=true
+      - RACK_ATTACK_LIMIT=300
+      - ENABLE_RACK_ATTACK_WIDGET_API=true
+
+      # Features
+      - ENABLE_PUSH_RELAY_SERVER=true
+      - IOS_APP_ID=L7YLMN4634.com.chatwoot.app
+      - ANDROID_BUNDLE_ID=com.chatwoot.app
+      - ANDROID_SHA256_CERT_FINGERPRINT=AC:73:8E:DE:EB:56:EA:CC:10:87:02:A7:65:37:7B:38:D4:5D:D4:53:F8:3B:FB:D3:C6:28:64:1D:AA:08:1E:D8
+
+    # Comando personalizado para inicialização
+    entrypoint: docker/entrypoints/rails.sh
+    command: |
+      sh -c "echo 'Starting Chatwoot Rails Server...' &&
+             bundle exec rails server -p 3000 -b 0.0.0.0"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "1.0"
+          memory: 1024M
+
+      # Labels para Traefik
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik_public
+
+        # Router principal
+        - traefik.http.routers.chatwoot-new.rule=Host(`chat.senaia.in`)
+        - traefik.http.routers.chatwoot-new.entrypoints=websecure
+        - traefik.http.routers.chatwoot-new.tls.certresolver=letsencrypt
+        - traefik.http.services.chatwoot-new.loadbalancer.server.port=3000
+
+        # Middleware para WebSocket e headers especiais
+        - traefik.http.middlewares.chatwoot-new-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.middlewares.chatwoot-new-headers.headers.customrequestheaders.X-Forwarded-Port=443
+        - traefik.http.routers.chatwoot-new.middlewares=chatwoot-new-headers
+
+      update_config:
+        parallelism: 1
+        delay: 60s
+        order: stop-first
+        failure_action: rollback
+        monitor: 120s
+
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 3
+        window: 120s
+
+    # Healthcheck para Rails
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 200s
+
+  # Worker Sidekiq para processamento em background
+  chatwoot_sidekiq:
+    image: chatwoot/chatwoot:v4.2.0
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+
+      # Base configuration - MESMA CHAVE DO RAILS!
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=https://chat.senaia.in
+      - FORCE_SSL=false
+      - ENABLE_ACCOUNT_SIGNUP=false
+
+      # Database configuration
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_STATEMENT_TIMEOUT=14s
+      - RAILS_MAX_THREADS=5
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage configuration (MinIO S3-compatible)
+      - ACTIVE_STORAGE_SERVICE=s3_compatible
+      - STORAGE_BUCKET_NAME=chatwoot
+      - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
+      - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
+      - STORAGE_REGION=us-east-1
+      - STORAGE_ENDPOINT=http://minio:9000  # Acesso interno via network
+      - STORAGE_FORCE_PATH_STYLE=true
+      - DIRECT_UPLOADS_ENABLED=false  # Arquivos passam pelo Chatwoot
+
+      # Email configuration
+      - MAILER_SENDER_EMAIL=Chatwoot <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=edmoauhradsarvmw
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=chat.senaia.in
+
+      # Performance settings
+      - SIDEKIQ_CONCURRENCY=10
+      - RAILS_LOG_TO_STDOUT=true
+      - LOG_LEVEL=info
+      - LOG_SIZE=500
+      - ENABLE_RACK_ATTACK=true
+      - RACK_ATTACK_LIMIT=300
+      - ENABLE_RACK_ATTACK_WIDGET_API=true
+
+      # Features
+      - ENABLE_PUSH_RELAY_SERVER=true
+
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1536M
+        reservations:
+          cpus: "0.5"
+          memory: 768M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+    # Healthcheck para Sidekiq
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep sidekiq | grep -v grep || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+networks:
+  app_network:
+    external: true
+  traefik_public:
+    external: true

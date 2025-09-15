@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  chatwoot_migrate:
+    image: chatwoot/chatwoot:v4.2.0
+    networks:
+      - app_network
+    environment:
+      # Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+
+      # Security Key
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+
+      # Database Configuration
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_db
+      - POSTGRES_PORT=5432
+
+      # Redis Configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage Configuration (MinIO)
+      - ACTIVE_STORAGE_SERVICE=s3_compatible
+      - STORAGE_BUCKET_NAME=chatwoot
+      - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
+      - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
+      - STORAGE_REGION=us-east-1
+      - STORAGE_ENDPOINT=http://minio:9000
+      - STORAGE_FORCE_PATH_STYLE=true
+
+    # Command to run database migration
+    command: bundle exec rails db:chatwoot_prepare
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: none  # Don't restart after completion
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+
+networks:
+  app_network:
+    external: true
