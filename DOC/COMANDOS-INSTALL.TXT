@@ -135,6 +135,14 @@ n8n_worker
 #  # @devlikeapro/n8n-nodes-chatwoot
 
 ################ CHATWOOT #################
+
+
+#Acessar o console do container do Postgres
+psql -U chatwoot_database -d chatwoot_database
+
+#Crie o Banco de Dados do CHATWOOT
+CREATE DATABASE chatwoot_db;
+
 SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 
 
 # goto minio create a chatwoot api key
@@ -153,7 +161,7 @@ docker service create --name chatwoot-migrate \
   -e POSTGRES_HOST=postgres \
   -e POSTGRES_USERNAME=chatwoot_database \
   -e POSTGRES_PASSWORD="Ma1x1x0x!!Ma1x1x0x!!" \
-  -e POSTGRES_DATABASE=chatwoot_database \
+  -e POSTGRES_DATABASE=chatwoot_db \
   -e POSTGRES_PORT=5432 \
   -e REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379 \
   chatwoot/chatwoot:v4.2.0 \
@@ -170,7 +178,7 @@ docker service logs -f chatwoot-migrate
 docker service rm chatwoot-migrate
 
 # Verificar tabelas criadas
-docker exec $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwoot_database -c "\dt"
+docker exec $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwoot_db -c "\dt"
 
 ################ EVOLUTION #################
 
@@ -235,4 +243,9 @@ SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
 ## evolution
  - S3_ACCESS_KEY=5lsFUYQkaj36mjULwzaC
       - S3_SECRET_KEY=gggQxoMDzHlH9AVOFSdB25lftDSoBnWZgeTFyt6g
-AUTHENTICATION_API_KEY=LcXEtOWi3xX0HNFY4EbMT9sPWcMbT1nu      
+
+user evo.senaia.in      
+pass LcXEtOWi3xX0HNFY4EbMT9sPWcMbT1nu      
+
+evo.senaia.in
+clubdeofertas 1230F54682FF-4CDA-839C-AA9FBCBF910A 595985511359

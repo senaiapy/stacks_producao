@@ -30,7 +30,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_USERNAME=chatwoot_database
       - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
-      - POSTGRES_DATABASE=chatwoot_database
+      - POSTGRES_DATABASE=chatwoot_db
       - POSTGRES_PORT=5432
       - POSTGRES_STATEMENT_TIMEOUT=14s
       - RAILS_MAX_THREADS=5
@@ -163,7 +163,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_USERNAME=chatwoot_database
       - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
-      - POSTGRES_DATABASE=chatwoot_database
+      - POSTGRES_DATABASE=chatwoot_db
       - POSTGRES_PORT=5432
       - POSTGRES_STATEMENT_TIMEOUT=14s
       - RAILS_MAX_THREADS=5
