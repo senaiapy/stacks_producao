@@ -139,7 +139,7 @@ services:
       - S3_SECRET_KEY=gggQxoMDzHlH9AVOFSdB25lftDSoBnWZgeTFyt6g
       - S3_BUCKET=evolution
       - S3_PORT=443
-      - S3_ENDPOINT=https://files.senaia.in
+      - S3_ENDPOINT=files.senaia.in
       - S3_USE_SSL=true
       
       # Autenticação
