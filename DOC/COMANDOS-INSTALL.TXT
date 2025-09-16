@@ -183,6 +183,8 @@ vae chatwoot configuracoes de perfil token api e colocar
 dias importacao mensagen 7
 botao autocreate
 
+## SETTINGS -CREATE A NEW INBOX -
+
 ############################################################
 ####### PORTAINER RUNNING IN http://217.79.184.8:9000
 ####### AND ACCESS FOR https://painel.senaia.in
