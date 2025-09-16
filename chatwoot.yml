@@ -48,7 +48,7 @@ services:
       - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
       - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
       - STORAGE_REGION=us-east-1
-      - STORAGE_ENDPOINT=http://minio:9000  # ✅ Acesso interno funciona
+      - STORAGE_ENDPOINT=https://files.senaia.in  # ✅ Acesso interno funciona
       - STORAGE_FORCE_PATH_STYLE=true
       - DIRECT_UPLOADS_ENABLED=false  # ✅ Arquivos passam pelo Chatwoot
       
@@ -181,7 +181,7 @@ services:
       - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
       - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
       - STORAGE_REGION=us-east-1
-      - STORAGE_ENDPOINT=http://minio:9000  # ✅ Acesso interno funciona
+      - STORAGE_ENDPOINT=https://files.senaia.in  # ✅ Acesso interno funciona
       - STORAGE_FORCE_PATH_STYLE=true
       - DIRECT_UPLOADS_ENABLED=false  # ✅ Arquivos passam pelo Chatwoot
       

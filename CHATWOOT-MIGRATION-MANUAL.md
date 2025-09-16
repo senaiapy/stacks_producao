@@ -109,7 +109,7 @@ docker service create --name chatwoot-migrate-new \
   --env STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml \
   --env STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB \
   --env STORAGE_REGION=us-east-1 \
-  --env STORAGE_ENDPOINT=http://minio:9000 \
+  --env STORAGE_ENDPOINT=https://files.senaia.in \
   --env STORAGE_FORCE_PATH_STYLE=true \
   chatwoot/chatwoot:v4.2.0 \
   bundle exec rails db:chatwoot_prepare

@@ -175,6 +175,13 @@ chatwoot.yml
 # goto minio create a chatwoot api key
 # PLACE SECRET ANonKEY
 
+####### integrar com CHATWOOT
+ativar botao
+vae emn integracao chatwoot url do chatwoot https://chat.senaia.in
+conta 1 ver dashboard endereco
+vae chatwoot configuracoes de perfil token api e colocar 
+dias importacao mensagen 7
+botao autocreate
 
 ############################################################
 ####### PORTAINER RUNNING IN http://217.79.184.8:9000
@@ -237,6 +244,7 @@ SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
 
 marcelu.phd@gmail.com
 @450A...0628....chatwoot
+apikey= VfQrr8ruFjVjarMgADhLtnnw
 
 ##---------------------------- evolution
  - S3_ACCESS_KEY=5lsFUYQkaj36mjULwzaC

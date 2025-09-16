@@ -42,7 +42,7 @@ services:
       - S3_ACCESS_KEY=vbPgNvelNqsYEQ1IWEyl
       - S3_SECRET_KEY=1qIP0YthUVEUgePYuiu0b1MOq8NHeS4qWzDbEhnc
       - S3_BUCKET=typebot
-      - S3_ENDPOINT=files.senaia.in
+      - S3_ENDPOINT=https://files.senaia.in
       - S3_PORT=9000
       - S3_SSL=true
       - S3_REGION=us-east-1
@@ -110,7 +110,7 @@ services:
       - S3_ACCESS_KEY=vbPgNvelNqsYEQ1IWEyl
       - S3_SECRET_KEY=1qIP0YthUVEUgePYuiu0b1MOq8NHeS4qWzDbEhnc
       - S3_BUCKET=typebot
-      - S3_ENDPOINT=files.senaia.in
+      - S3_ENDPOINT=https://files.senaia.in
       - S3_PORT=9000
       - S3_SSL=true
       - S3_REGION=us-east-1
