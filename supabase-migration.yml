@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  supabase_init:
+    image: supabase/postgres:15.1.0.147
+    networks:
+      - app_network
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=supabase_admin
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_INITDB_ARGS=--locale=C.UTF-8 --encoding=UTF8
+    command: >
+      bash -c "
+      postgres &
+      sleep 30 &&
+      psql -U supabase_admin -d postgres -c 'CREATE EXTENSION IF NOT EXISTS vector;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE SCHEMA IF NOT EXISTS auth;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE SCHEMA IF NOT EXISTS storage;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE SCHEMA IF NOT EXISTS realtime;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE SCHEMA IF NOT EXISTS graphql_public;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE ROLE anon;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE ROLE authenticated;' &&
+      psql -U supabase_admin -d postgres -c 'CREATE ROLE authenticator LOGIN PASSWORD \"Ma1x1x0x!!Ma1x1x0x!!\";' &&
+      psql -U supabase_admin -d postgres -c 'GRANT anon TO authenticator;' &&
+      psql -U supabase_admin -d postgres -c 'GRANT authenticated TO authenticator;' &&
+      echo 'Database initialization completed' &&
+      tail -f /dev/null
+      "
+    volumes:
+      - supabase_db_data:/var/lib/postgresql/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: none
+
+networks:
+  app_network:
+    external: true
+
+volumes:
+  supabase_db_data:
+    driver: local

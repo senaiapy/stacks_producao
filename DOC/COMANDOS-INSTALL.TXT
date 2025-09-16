@@ -151,41 +151,29 @@ SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
 **⚠️ IMPORTANTE**: Execute a migração antes de subir o Chatwoot:
 
 ### 1. Container Temporário para Migração
+#crie o stack chatwoot-portainer-yml
+#suba o stack e aguarde a configuracao finalizada
+#verifique se as tabelas foram criadas no postgres
+psql -U chatwoot_database -d chatwoot_db -c "\dt"
 
-docker service create --name chatwoot-migrate \
-  --network app_network \
-  --restart-condition none \
-  -e NODE_ENV=production \
-  -e RAILS_ENV=production \
-  -e SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 \
-  -e POSTGRES_HOST=postgres \
-  -e POSTGRES_USERNAME=chatwoot_database \
-  -e POSTGRES_PASSWORD="Ma1x1x0x!!Ma1x1x0x!!" \
-  -e POSTGRES_DATABASE=chatwoot_db \
-  -e POSTGRES_PORT=5432 \
-  -e REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379 \
-  chatwoot/chatwoot:v4.2.0 \
-  bundle exec rails db:chatwoot_prepare
+#remova o stack e crie o stack 
+chatwoot.yml
 
-
-### 2. Monitorar Migração
-# Acompanhar logs
-docker service logs -f chatwoot-migrate
-
-
-### 3. Limpar e Verificar
-# Remover serviço temporário
-docker service rm chatwoot-migrate
-
-# Verificar tabelas criadas
-docker exec $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwoot_db -c "\dt"
+#    ### 2. Monitorar Migração
+#    # Acompanhar logs
+#    docker service logs -f chatwoot-migrate
+#    ### 3. Limpar e Verificar
+#    # Remover serviço temporário
+#    docker service rm chatwoot-migrate
+#    # Verificar tabelas criadas
+#    docker exec $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwoot_db -c "\dt"
 
 ################ EVOLUTION #################
 
 # create database evolution_database
 
 # goto minio create a chatwoot api key
-# PLACE SECRET AN KEY
+# PLACE SECRET ANonKEY
 
 
 ############################################################
@@ -193,7 +181,7 @@ docker exec $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwo
 ####### AND ACCESS FOR https://painel.senaia.in
 
 
-##### ANTES DE RODAR SENPRE VERIFICAR SE ESTAO LBERADOS DOMINIOS NO DNSCHECKER PARA EVITAR BLOQUEIO ######
+##### ANTES DE RODAR SENPRE VERIFICAR SE ESTAO LIBERADOS DOMINIOS NO DNSCHECKER PARA EVITAR BLOQUEIO ######
 
 ####### PORTS IN USE
 
@@ -210,14 +198,19 @@ supabase 8000
 supabase-studio 3032
 minio 9000 interno
 
+#-----------------------------POSTGRES
 
 postgress porta 5432
 user chatwoot_database
 db chatwoot_database
 password Ma1x1x0x!!Ma1x1x0x!!
 
+#-----------------------------REDIS
+
 redis porta 6379
 password   J40geWtC08VoaUqoZ      
+
+#-----------------------------MINIO
 
 - MINIO_ROOT_USER=marceluphd
       - MINIO_ROOT_PASSWORD=1:7khB-=2898
@@ -229,18 +222,23 @@ password   J40geWtC08VoaUqoZ
       gmail password to connect dmaatsjzgzxqxmil
       mardelu.phd
 
+#-----------------------------N8N
+
 user marcelu.phd@gmail.com
 pass @450A...0628....n8n
 
 
 - N8N_ENCRYPTION_KEY=KRpMlPWMaRCeL0Ehy6sHuYYweuLes4RT
 
-#CHATWOOT
+#-----------------------------CHATWOOT
       - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
       - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
 SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 
 
-## evolution
+marcelu.phd@gmail.com
+@450A...0628....chatwoot
+
+##---------------------------- evolution
  - S3_ACCESS_KEY=5lsFUYQkaj36mjULwzaC
       - S3_SECRET_KEY=gggQxoMDzHlH9AVOFSdB25lftDSoBnWZgeTFyt6g
 
