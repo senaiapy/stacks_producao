@@ -185,6 +185,18 @@ botao autocreate
 
 ## SETTINGS -CREATE A NEW INBOX -
 
+################ BAILEYS #################
+
+
+################ SUPABASE #################
+
+#creata a database supabase_db
+
+#Acessar o console do container do Postgres
+psql -U chatwoot_database -d chatwoot_database
+
+#Crie o Banco de Dados do CHATWOOT
+CREATE DATABASE supabase_db;
 ############################################################
 ####### PORTAINER RUNNING IN http://217.79.184.8:9000
 ####### AND ACCESS FOR https://painel.senaia.in
@@ -231,6 +243,18 @@ password   J40geWtC08VoaUqoZ
       gmail password to connect dmaatsjzgzxqxmil
       mardelu.phd
 
+chatwoot-baileys 
+acceskey BN0t99DuuhNtbkiJQcHP
+secretkey enCejRo4tU9tmvCWa5LuwAfTods0vNfYlOMbXdyB
+
+chatwoot
+    - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
+      - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
+
+evolutiom
+- S3_ACCESS_KEY=5lsFUYQkaj36mjULwzaC
+      - S3_SECRET_KEY=gggQxoMDzHlH9AVOFSdB25lftDSoBnWZgeTFyt6g
+
 #-----------------------------N8N
 
 user marcelu.phd@gmail.com
@@ -240,18 +264,14 @@ pass @450A...0628....n8n
 - N8N_ENCRYPTION_KEY=KRpMlPWMaRCeL0Ehy6sHuYYweuLes4RT
 
 #-----------------------------CHATWOOT
-      - STORAGE_ACCESS_KEY_ID=YLBhnYvXT1vsOqlWh9Ml
-      - STORAGE_SECRET_ACCESS_KEY=8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
-SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 
+  SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 
 
 marcelu.phd@gmail.com
 @450A...0628....chatwoot
 apikey= VfQrr8ruFjVjarMgADhLtnnw
 
 ##---------------------------- evolution
- - S3_ACCESS_KEY=5lsFUYQkaj36mjULwzaC
-      - S3_SECRET_KEY=gggQxoMDzHlH9AVOFSdB25lftDSoBnWZgeTFyt6g
-
+ 
 user evo.senaia.in      
 pass LcXEtOWi3xX0HNFY4EbMT9sPWcMbT1nu      
 

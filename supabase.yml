@@ -1,0 +1,286 @@
+version: "3.8"
+
+services:
+  # Supabase API Gateway
+  supabase_kong:
+    image: kong:3.4.0-alpine
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+      - traefik_public
+
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/var/lib/kong/kong.yml
+      - KONG_DNS_ORDER=LAST,A,CNAME
+      - KONG_PLUGINS=request-id,kong-offline-payments,cors
+      - KONG_LOG_LEVEL=info
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+
+    volumes:
+      - supabase_kong_config:/var/lib/kong
+
+    command: >
+      sh -c "
+      mkdir -p /var/lib/kong &&
+      cat > /var/lib/kong/kong.yml << 'EOF'
+      _format_version: '3.0'
+      _transform: true
+
+      services:
+        - name: supabase-rest
+          url: http://supabase_rest:3000
+          routes:
+            - name: supabase-rest-route
+              strip_path: true
+              paths:
+                - /rest/v1/
+
+        - name: supabase-auth
+          url: http://supabase_auth:9999
+          routes:
+            - name: supabase-auth-route
+              strip_path: true
+              paths:
+                - /auth/v1/
+
+        - name: supabase-realtime
+          url: http://supabase_realtime:4000
+          routes:
+            - name: supabase-realtime-route
+              strip_path: true
+              paths:
+                - /realtime/v1/
+      EOF
+      kong start --run-migrations
+      "
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=traefik_public
+        - traefik.http.routers.supabase.rule=Host(`supabase.senaia.in`)
+        - traefik.http.routers.supabase.entrypoints=websecure
+        - traefik.http.routers.supabase.tls.certresolver=letsencrypt
+        - traefik.http.services.supabase.loadbalancer.server.port=8000
+
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # Supabase REST API
+  supabase_rest:
+    image: postgrest/postgrest:v11.2.2
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    environment:
+      - PGRST_DB_URI=postgresql://supabase_admin:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/supabase_db
+      - PGRST_DB_SCHEMAS=public,auth,storage
+      - PGRST_DB_ANON_ROLE=anon
+      - PGRST_JWT_SECRET=194F83A5E420E2908213782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - PGRST_DB_USE_LEGACY_GUCS=false
+      - PGRST_APP_SETTINGS_JWT_SECRET=194F83A5E420E2908213782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - PGRST_APP_SETTINGS_JWT_EXP=3600
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # Supabase Auth (GoTrue)
+  supabase_auth:
+    image: supabase/gotrue:v2.99.0
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    environment:
+      - GOTRUE_API_HOST=0.0.0.0
+      - GOTRUE_API_PORT=9999
+      - API_EXTERNAL_URL=https://supabase.senaia.in
+      - GOTRUE_DB_DRIVER=postgres
+      - GOTRUE_DB_DATABASE_URL=postgresql://supabase_admin:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/supabase_db?search_path=auth&sslmode=disable
+      - GOTRUE_DB_SCHEMA=auth
+      - GOTRUE_DB_MAX_OPEN_CONNS=25
+      - GOTRUE_DB_MAX_IDLE_CONNS=10
+
+      - GOTRUE_SITE_URL=https://supabase.senaia.in
+      - GOTRUE_URI_ALLOW_LIST=https://supabase.senaia.in
+      - GOTRUE_DISABLE_SIGNUP=false
+      - GOTRUE_JWT_ADMIN_ROLES=service_role
+      - GOTRUE_JWT_AUD=authenticated
+      - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
+      - GOTRUE_JWT_EXP=3600
+      - GOTRUE_JWT_SECRET=194F83A5E420E2908213782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+
+      - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
+      - GOTRUE_MAILER_AUTOCONFIRM=false
+      - GOTRUE_SMTP_ADMIN_EMAIL=admin@senaia.in
+      - GOTRUE_SMTP_HOST=smtp.gmail.com
+      - GOTRUE_SMTP_PORT=587
+      - GOTRUE_SMTP_USER=marcelu.phd@gmail.com
+      - GOTRUE_SMTP_PASS=edmoauhradsarvmw
+      - GOTRUE_SMTP_SENDER_NAME=Supabase
+      - GOTRUE_MAILER_SUBJECTS_INVITE=You have been invited
+      - GOTRUE_MAILER_SUBJECTS_CONFIRMATION=Confirm your signup
+      - GOTRUE_MAILER_SUBJECTS_RECOVERY=Reset your password
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # Supabase Realtime
+  supabase_realtime:
+    image: supabase/realtime:v2.25.35
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    environment:
+      - PORT=4000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=supabase_admin
+      - DB_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - DB_NAME=supabase_db
+      - DB_AFTER_CONNECT_QUERY=SET search_path TO realtime
+      - DB_ENC_KEY=supabaserealtime
+      - API_JWT_SECRET=194F83A5E420E2908213782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FLY_ALLOC_ID=fly123
+      - FLY_APP_NAME=realtime
+      - SECRET_KEY_BASE=UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+
+    # Realtime service will start automatically
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # Supabase Studio (Admin Dashboard)
+  supabase_studio:
+    image: supabase/studio:20231103-a58f66e
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+      - traefik_public
+
+    environment:
+      - STUDIO_PG_META_URL=http://supabase_meta:8080
+      - SUPABASE_AUTH_URL=http://supabase_kong:8000/auth/v1
+      - SUPABASE_REST_URL=http://supabase_kong:8000/rest/v1/
+      - SUPABASE_REALTIME_URL=http://supabase_kong:8000/realtime/v1/
+      - SUPABASE_PUBLIC_URL=https://supabase.senaia.in
+      - SUPABASE_URL=https://supabase.senaia.in
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGFiYXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTI4OTk5OTksImV4cCI6MTg1MDY2NjQwMH0.0
+      - SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGFiYXNlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY5Mjg5OTk5OSwiZXhwIjoxODUwNjY2NDAwfQ.0
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=traefik_public
+        - traefik.http.routers.supabase-studio.rule=Host(`studio.senaia.in`)
+        - traefik.http.routers.supabase-studio.entrypoints=websecure
+        - traefik.http.routers.supabase-studio.tls.certresolver=letsencrypt
+        - traefik.http.services.supabase-studio.loadbalancer.server.port=3000
+
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # Supabase Meta (Database metadata)
+  supabase_meta:
+    image: supabase/postgres-meta:v0.68.0
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    environment:
+      - PG_META_PORT=8080
+      - PG_META_DB_HOST=postgres
+      - PG_META_DB_PORT=5432
+      - PG_META_DB_NAME=supabase_db
+      - PG_META_DB_USER=supabase_admin
+      - PG_META_DB_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 256M
+
+networks:
+  app_network:
+    external: true
+  traefik_public:
+    external: true
+
+volumes:
+  supabase_kong_config:
+    driver: local

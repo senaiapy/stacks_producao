@@ -351,3 +351,70 @@ const subscription = supabase
 - [ ] Logs sem erros críticos
 
 **🎉 Supabase completo rodando no Portainer com todos os recursos!**
+
+
+MANUAL MIGRATIONS
+
+ psql -U chatwoot_database -d postgres
+
+  # 2. Inside PostgreSQL, run these 
+  commands:
+  CREATE DATABASE supabase_db;
+  GRANT ALL PRIVILEGES ON DATABASE
+  supabase_db TO chatwoot_database;
+
+  # Switch to supabase_db
+  \c supabase_db
+
+  # Create extensions
+  CREATE EXTENSION IF NOT EXISTS vector;
+  CREATE EXTENSION IF NOT EXISTS
+  pg_stat_statements;
+  CREATE EXTENSION IF NOT EXISTS
+  pg_trgm;
+  CREATE EXTENSION IF NOT EXISTS
+  pgcrypto;
+  CREATE EXTENSION IF NOT EXISTS pgjwt;
+  CREATE EXTENSION IF NOT EXISTS
+  "uuid-ossp";
+
+  # Create schemas
+  CREATE SCHEMA IF NOT EXISTS auth;
+  CREATE SCHEMA IF NOT EXISTS storage;
+  CREATE SCHEMA IF NOT EXISTS realtime;
+  CREATE SCHEMA IF NOT EXISTS
+  graphql_public;
+  CREATE SCHEMA IF NOT EXISTS
+  extensions;
+
+  # Create supabase_admin user
+  CREATE ROLE supabase_admin LOGIN
+  SUPERUSER PASSWORD
+  'Ma1x1x0x!!Ma1x1x0x!!';
+
+  # Create other roles
+  CREATE ROLE anon NOLOGIN;
+  CREATE ROLE authenticated NOLOGIN;
+  CREATE ROLE service_role NOLOGIN
+  SUPERUSER;
+  CREATE ROLE authenticator LOGIN
+  PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!'
+  NOINHERIT;
+
+  # Grant permissions
+  GRANT anon TO authenticator;
+  GRANT authenticated TO authenticator;
+  GRANT service_role TO authenticator;
+
+  # Make supabase_admin owner of schemas
+  ALTER SCHEMA auth OWNER TO
+  supabase_admin;
+  ALTER SCHEMA storage OWNER TO
+  supabase_admin;
+  ALTER SCHEMA realtime OWNER TO
+  supabase_admin;
+  ALTER SCHEMA graphql_public OWNER TO
+  supabase_admin;
+
+  # Exit PostgreSQL
+  \q

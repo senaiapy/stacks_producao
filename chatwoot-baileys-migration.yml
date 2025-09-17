@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  chatwoot_baileys_migrate:
+    image: 'ghcr.io/fazer-ai/chatwoot:latest'
+    networks:
+      - app_network
+    environment:
+      # Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - DEFAULT_LOCALE=es_PY
+      #- DEFAULT_LOCALE=pt_BR
+
+      # Security Key - MESMA CHAVE DO STACK PRINCIPAL!
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+
+      # Database Configuration (usando PostgreSQL do stack)
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_baileys_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_STATEMENT_TIMEOUT=14s
+      - RAILS_MAX_THREADS=5
+
+      # Redis Configuration (usando Redis do stack)
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage Configuration (MinIO S3-compatible)
+      - ACTIVE_STORAGE_SERVICE=s3_compatible
+      - STORAGE_BUCKET_NAME=chatwoot-baileys
+      - STORAGE_ACCESS_KEY_ID=BN0t99DuuhNtbkiJQcHP
+      - STORAGE_SECRET_ACCESS_KEY=enCejRo4tU9tmvCWa5LuwAfTods0vNfYlOMbXdyB
+      - STORAGE_REGION=us-east-1
+      - STORAGE_ENDPOINT=https://files.senaia.in
+      - STORAGE_FORCE_PATH_STYLE=true
+      - DIRECT_UPLOADS_ENABLED=false
+
+      # Baileys Provider Configuration
+      - BAILEYS_PROVIDER_DEFAULT_CLIENT_NAME=chatwoot-baileys
+      - BAILEYS_PROVIDER_DEFAULT_URL=http://baileys_api:3025
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - BAILEYS_PROVIDER_USE_INTERNAL_HOST_URL=true
+
+      # Email configuration
+      - MAILER_SENDER_EMAIL=Chatwoot Baileys <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=edmoauhradsarvmw
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=baileys.senaia.in
+
+      # Security and performance
+      - RAILS_LOG_TO_STDOUT=true
+      - LOG_LEVEL=info
+      - LOG_SIZE=500
+      - ENABLE_RACK_ATTACK=true
+      - RACK_ATTACK_LIMIT=300
+      - ENABLE_RACK_ATTACK_WIDGET_API=true
+
+      # Features
+      - ENABLE_PUSH_RELAY_SERVER=true
+      - IOS_APP_ID=L7YLMN4634.com.chatwoot.app
+      - ANDROID_BUNDLE_ID=com.chatwoot.app
+      - ANDROID_SHA256_CERT_FINGERPRINT=AC:73:8E:DE:EB:56:EA:CC:10:87:02:A7:65:37:7B:38:D4:5D:D4:53:F8:3B:FB:D3:C6:28:64:1D:AA:08:1E:D8
+
+      # Frontend URL para migração
+      - FRONTEND_URL=https://baileys.senaia.in
+      - FORCE_SSL=false
+
+    # Command to run database migration and preparation
+    command: bundle exec rails db:chatwoot_prepare
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: none  # Não reinicia após completar
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+
+networks:
+  app_network:
+    external: true
