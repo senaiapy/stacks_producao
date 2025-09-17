@@ -4,27 +4,28 @@ services:
   traefik:
     image: traefik:v3.4  # Versão mais recente do Traefik v3
     ports:
-      # # HTTP (porta 80)
-      # - target: 80
-      #   published: 80
-      #   protocol: tcp
-      #   mode: host
-      # # HTTPS (porta 443) 
-      # - target: 443
-      #   published: 443
-      #   protocol: tcp
-      #   mode: host
+       # HTTP (porta 80)
+       - target: 80
+         published: 80
+         protocol: tcp
+         mode: host
+       # HTTPS (porta 443) 
+       - target: 443
+         published: 443
+         protocol: tcp
+         mode: host
 
-         # HTTP (porta 8888)
-      - target: 80
-        published: 8888
-        protocol: tcp
-        mode: host
-      # HTTPS (porta 8443) 
-      - target: 443
-        published: 8443
-        protocol: tcp
-        mode: host
+     ##    # HTTP (porta 8888)
+     ## - target: 80
+     ##   published: 8888
+     ##   protocol: tcp
+     ##   mode: host
+     ## # HTTPS (porta 8443) 
+     ## - target: 443
+     ##   published: 8443
+     ##   protocol: tcp
+     ##   mode: host
+
       # Dashboard do Traefik (opcional - remover em produção)
       # - target: 8080
       #   published: 8080
@@ -36,7 +37,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Volume para certificados SSL/TLS (Let's Encrypt)
       - traefik_certificates:/certificates
-    
+      # Adicione esta linha para o provedor de arquivo red local
+      - ./var/data/config_externa:/config_externa:ro
+
     command:
       # Log level
       - --log.level=INFO
@@ -57,6 +60,10 @@ services:
       - --providers.swarm.exposedByDefault=false
       - --providers.swarm.network=traefik_public
       
+      # Provedor de Arquivo
+      - --providers.file.directory=/config_externa
+      - --providers.file.watch=true
+
       # Let's Encrypt (certificados SSL automáticos)
       - --certificatesResolvers.letsencrypt.acme.tlsChallenge=true
       - --certificatesResolvers.letsencrypt.acme.email=marcelu.phd@gmail.com
