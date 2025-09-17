@@ -143,6 +143,11 @@ psql -U chatwoot_database -d chatwoot_database
 #Crie o Banco de Dados do CHATWOOT
 CREATE DATABASE chatwoot_db;
 
+psql -U chatwoot_database -d chatwoot_database
+
+#Crie o Banco de Dados do CHATWOOT
+CREATE DATABASE chatwoot_baileys_db;
+
 SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 
 
 # goto minio create a chatwoot api key

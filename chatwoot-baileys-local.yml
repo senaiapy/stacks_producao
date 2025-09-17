@@ -1,0 +1,274 @@
+version: '3.8'
+
+services:
+  rails:
+    image: 'ghcr.io/fazer-ai/chatwoot:latest'
+    pull_policy: always
+    volumes:
+      - 'storage:/app/storage'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - DEFAULT_LOCALE=pt_BR
+
+      # Base configuration
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=http://localhost:3070
+      - INTERNAL_HOST_URL=http://rails:3000
+      - FORCE_SSL=false
+      - ENABLE_ACCOUNT_SIGNUP=false
+
+      # Database configuration
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_baileys_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_STATEMENT_TIMEOUT=14s
+      - RAILS_MAX_THREADS=5
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage configuration (using local storage for development)
+      - ACTIVE_STORAGE_SERVICE=local
+
+      # Baileys Provider Configuration
+      - BAILEYS_PROVIDER_DEFAULT_CLIENT_NAME=chatwoot-baileys
+      - BAILEYS_PROVIDER_DEFAULT_URL=http://baileys-api:3025
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - BAILEYS_PROVIDER_USE_INTERNAL_HOST_URL=true
+
+      # Email configuration
+      - MAILER_SENDER_EMAIL=Chatwoot Baileys <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=edmoauhradsarvmw
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=localhost
+
+      # Security and performance
+      - RAILS_LOG_TO_STDOUT=true
+      - LOG_LEVEL=info
+      - LOG_SIZE=500
+      - ENABLE_RACK_ATTACK=true
+      - RACK_ATTACK_LIMIT=300
+      - ENABLE_RACK_ATTACK_WIDGET_API=true
+
+      # Features
+      - ENABLE_PUSH_RELAY_SERVER=true
+      - IOS_APP_ID=L7YLMN4634.com.chatwoot.app
+      - ANDROID_BUNDLE_ID=com.chatwoot.app
+      - ANDROID_SHA256_CERT_FINGERPRINT=AC:73:8E:DE:EB:56:EA:CC:10:87:02:A7:65:37:7B:38:D4:5D:D4:53:F8:3B:FB:D3:C6:28:64:1D:AA:08:1E:D8
+    entrypoint: docker/entrypoints/rails.sh
+    command: |
+      sh -c "bundle exec rails db:chatwoot_prepare &&
+             bundle exec rails s -p 3000 -b 0.0.0.0"
+    restart: unless-stopped
+    ports:
+      - '3070:3000'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -qO- --header="Accept: text/html" http://127.0.0.1:3000/ || exit 1'
+      interval: 60s
+      timeout: 20s
+      retries: 10
+      start_period: 30s
+
+  sidekiq:
+    image: 'ghcr.io/fazer-ai/chatwoot:latest'
+    pull_policy: always
+    volumes:
+      - 'storage:/app/storage'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rails:
+        condition: service_started
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - DEFAULT_LOCALE=pt_BR
+
+      # Base configuration
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=http://localhost:3070
+      - INTERNAL_HOST_URL=http://rails:3000
+      - FORCE_SSL=false
+      - ENABLE_ACCOUNT_SIGNUP=false
+
+      # Database configuration
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_baileys_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_STATEMENT_TIMEOUT=14s
+      - RAILS_MAX_THREADS=5
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage configuration (using local storage for development)
+      - ACTIVE_STORAGE_SERVICE=local
+
+      # Baileys Provider Configuration
+      - BAILEYS_PROVIDER_DEFAULT_CLIENT_NAME=chatwoot-baileys
+      - BAILEYS_PROVIDER_DEFAULT_URL=http://baileys-api:3025
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - BAILEYS_PROVIDER_USE_INTERNAL_HOST_URL=true
+
+      # Email configuration
+      - MAILER_SENDER_EMAIL=Chatwoot Baileys <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=edmoauhradsarvmw
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=localhost
+
+      # Performance settings
+      - SIDEKIQ_CONCURRENCY=10
+      - RAILS_LOG_TO_STDOUT=true
+      - LOG_LEVEL=info
+      - LOG_SIZE=500
+      - ENABLE_RACK_ATTACK=true
+      - RACK_ATTACK_LIMIT=300
+      - ENABLE_RACK_ATTACK_WIDGET_API=true
+
+      # Features
+      - ENABLE_PUSH_RELAY_SERVER=true
+      - IOS_APP_ID=L7YLMN4634.com.chatwoot.app
+      - ANDROID_BUNDLE_ID=com.chatwoot.app
+      - ANDROID_SHA256_CERT_FINGERPRINT=AC:73:8E:DE:EB:56:EA:CC:10:87:02:A7:65:37:7B:38:D4:5D:D4:53:F8:3B:FB:D3:C6:28:64:1D:AA:08:1E:D8
+    command:
+      - bundle
+      - exec
+      - sidekiq
+      - '-C'
+      - config/sidekiq.yml
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'ps aux | grep [s]idekiq || exit 1'
+      interval: 20s
+      timeout: 20s
+      retries: 10
+      start_period: 30s
+
+  postgres:
+    image: 'pgvector/pgvector:pg16'
+    restart: unless-stopped
+    volumes:
+      - 'postgres:/var/lib/postgresql/data'
+    environment:
+      - POSTGRES_DB=chatwoot_baileys_db
+      - POSTGRES_USER=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+    ports:
+      - '45432:5432'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'pg_isready -h localhost -p 5432 -U $${POSTGRES_USER} -d $${POSTGRES_DB} || exit 1'
+      interval: 20s
+      timeout: 20s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: 'redis:7-alpine'
+    restart: unless-stopped
+    command:
+      - sh
+      - '-c'
+      - 'redis-server --requirepass "J40geWtC08VoaUqoZ"'
+    volumes:
+      - 'redis:/data'
+    environment:
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+    ports:
+      - '46379:6379'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'redis-cli -h localhost -p 6379 -a $${REDIS_PASSWORD} ping | grep PONG || exit 1'
+      interval: 20s
+      timeout: 20s
+      retries: 10
+      start_period: 10s
+
+  baileys-api:
+    image: "ghcr.io/fazer-ai/baileys-api:latest"
+    pull_policy: always
+    volumes:
+      - "storage:/app/storage"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # Node Environment
+      - NODE_ENV=production
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Logging configuration
+      - LOG_LEVEL=info
+      - BAILEYS_LOG_LEVEL=error
+
+      # API Key configuration
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+    command:
+      - sh
+      - "-c"
+      - "bun manage-api-keys create user 194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 && bun start"
+    restart: unless-stopped
+    ports:
+      - '3075:3025'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "wget -qO- http://localhost:3025/status || exit 1"
+      interval: 20s
+      timeout: 20s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  storage:
+    driver: local
+  postgres:
+    driver: local
+  redis:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+
+#Email: admin@chatwoot.localPassword:
+#Password:  Chatwoot123!    
