@@ -36,9 +36,9 @@ services:
       # Acesso ao Docker socket para descoberta de serviços
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Volume para certificados SSL/TLS (Let's Encrypt)
-      - traefik_certificates:/certificates
+      #- traefik_certificates:/certificates
       # Adicione esta linha para o provedor de arquivo red local
-      - ./var/data/config_externa:/config_externa:ro
+      #- ./var/data/config_externa:/config_externa:ro
 
     command:
       # Log level
@@ -61,8 +61,8 @@ services:
       - --providers.swarm.network=traefik_public
       
       # Provedor de Arquivo
-      - --providers.file.directory=/config_externa
-      - --providers.file.watch=true
+      #- --providers.file.directory=/config_externa
+      #- --providers.file.watch=true
 
       # Let's Encrypt (certificados SSL automáticos)
       - --certificatesResolvers.letsencrypt.acme.tlsChallenge=true

@@ -61,13 +61,13 @@ docker stack deploy --prune --resolve-image always -c traefik.yaml traefik
 
 
 9️⃣ Instalação do Portainer
-
-cria uma pasta onde roda o portainer
-mkdir -p /var/data/config_externa
-
-e colque la o aqruivo baileys.yml 
-e coloque o arquivo supabase.yml
-
+##
+##cria uma pasta onde roda o portainer
+##mkdir -p /var/data/config_externa
+##
+##e colque la o aqruivo baileys.yml 
+##e coloque o arquivo supabase.yml
+##
 para redirecionar as portas externas do trefik
 
 Execute o seguinte comando para instalar o Portainer:
