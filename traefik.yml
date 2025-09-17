@@ -36,7 +36,7 @@ services:
       # Acesso ao Docker socket para descoberta de serviços
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Volume para certificados SSL/TLS (Let's Encrypt)
-      #- traefik_certificates:/certificates
+      - traefik_certificates:/certificates
       # Adicione esta linha para o provedor de arquivo red local
       #- ./var/data/config_externa:/config_externa:ro
 
@@ -68,11 +68,13 @@ services:
       - --certificatesResolvers.letsencrypt.acme.tlsChallenge=true
       - --certificatesResolvers.letsencrypt.acme.email=marcelu.phd@gmail.com
       - --certificatesResolvers.letsencrypt.acme.storage=/certificates/acme.json
-      
+      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web
+
       # Redirect HTTP para HTTPS globalmente
       - --entryPoints.web.http.redirections.entryPoint.to=websecure
       - --entryPoints.web.http.redirections.entryPoint.scheme=https
-      
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+
       # Metrics (opcional)
       # - --metrics.prometheus=true
       # - --metrics.prometheus.addEntryPointsLabels=true
@@ -80,7 +82,8 @@ services:
     
     networks:
       - traefik_public
-    
+      - app_baileys_network      # Rede interna para comunicar com serviços
+
     deploy:
       mode: replicated
       replicas: 1
@@ -123,6 +126,10 @@ services:
 networks:
   traefik_public:
     external: true
+  # Rede interna para comunicação com serviços
+  app_baileys_network:
+    external: true
 
 volumes:
   traefik_certificates:
+    driver: local

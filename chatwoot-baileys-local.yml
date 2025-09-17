@@ -1,3 +1,7 @@
+# UNLOCK PORT 3070
+# UNLOCK PORT 3075
+# PROXY http://IP-SERVER:3070
+
 version: '3.8'
 
 services:
@@ -20,7 +24,7 @@ services:
 
       # Base configuration
       - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
-      - FRONTEND_URL=http://localhost:3070
+      - FRONTEND_URL=https://chatwoot.senaia-bank.in #http://localhost:3070
       - INTERNAL_HOST_URL=http://rails:3000
       - FORCE_SSL=false
       - ENABLE_ACCOUNT_SIGNUP=false
@@ -109,7 +113,7 @@ services:
 
       # Base configuration
       - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
-      - FRONTEND_URL=http://localhost:3070
+      - FRONTEND_URL=https://chatwoot.senaia-bank.in #http://localhost:3070
       - INTERNAL_HOST_URL=http://rails:3000
       - FORCE_SSL=false
       - ENABLE_ACCOUNT_SIGNUP=false
@@ -269,6 +273,3 @@ volumes:
 networks:
   default:
     driver: bridge
-
-#Email: admin@chatwoot.localPassword:
-#Password:  Chatwoot123!    

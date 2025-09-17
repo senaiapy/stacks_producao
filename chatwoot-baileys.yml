@@ -1,0 +1,473 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database com pgvector
+  postgres_baileys:
+    image: pgvector/pgvector:pg16
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_baileys_network
+
+    volumes:
+      - postgres_baileys_data:/var/lib/postgresql/data
+
+    environment:
+      - POSTGRES_DB=chatwoot_baileys_db
+      - POSTGRES_USER=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "1.0"
+          memory: 1024M
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+    # Health check para PostgreSQL
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U $${POSTGRES_USER} -d $${POSTGRES_DB} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache e Message Broker
+  redis_baileys:
+    image: redis:7-alpine
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_baileys_network
+
+    volumes:
+      - redis_baileys_data:/data
+
+    environment:
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+    command:
+      - sh
+      - '-c'
+      - 'redis-server --requirepass "J40geWtC08VoaUqoZ" --appendonly yes'
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+    # Health check para Redis
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep PONG || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Chatwoot Rails Application com Baileys
+  chatwoot_baileys_rails:
+    image: 'ghcr.io/fazer-ai/chatwoot:latest'
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_baileys_network      # Conecta com PostgreSQL/Redis
+      - traefik_baileys_public   # Exposição via Traefik
+
+    volumes:
+      - chatwoot_baileys_storage:/app/storage
+
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - DEFAULT_LOCALE=pt_BR
+
+      # Base configuration
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=https://baileys.senaia.in
+      - INTERNAL_HOST_URL=http://chatwoot_baileys_rails:3040
+      - FORCE_SSL=true
+      - ENABLE_ACCOUNT_SIGNUP=false
+
+      # Database configuration
+      - POSTGRES_HOST=postgres_baileys
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_baileys_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_STATEMENT_TIMEOUT=14s
+      - RAILS_MAX_THREADS=5
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis_baileys:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage configuration (local para desenvolvimento)
+      - ACTIVE_STORAGE_SERVICE=local
+
+      # Baileys Provider Configuration
+      - BAILEYS_PROVIDER_DEFAULT_CLIENT_NAME=chatwoot-baileys
+      - BAILEYS_PROVIDER_DEFAULT_URL=http://baileys_api:3025
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - BAILEYS_PROVIDER_USE_INTERNAL_HOST_URL=true
+
+      # Email configuration
+      - MAILER_SENDER_EMAIL=Chatwoot Baileys <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=edmoauhradsarvmw
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=baileys.senaia.in
+
+      # Security and performance
+      - RAILS_LOG_TO_STDOUT=true
+      - LOG_LEVEL=info
+      - LOG_SIZE=500
+      - ENABLE_RACK_ATTACK=true
+      - RACK_ATTACK_LIMIT=300
+      - ENABLE_RACK_ATTACK_WIDGET_API=true
+
+      # Features
+      - ENABLE_PUSH_RELAY_SERVER=true
+      - IOS_APP_ID=L7YLMN4634.com.chatwoot.app
+      - ANDROID_BUNDLE_ID=com.chatwoot.app
+      - ANDROID_SHA256_CERT_FINGERPRINT=AC:73:8E:DE:EB:56:EA:CC:10:87:02:A7:65:37:7B:38:D4:5D:D4:53:F8:3B:FB:D3:C6:28:64:1D:AA:08:1E:D8
+
+    entrypoint: docker/entrypoints/rails.sh
+    command: |
+      sh -c "bundle exec rails db:chatwoot_prepare &&
+             bundle exec rails s -p 3040 -b 0.0.0.0"
+
+    depends_on:
+      - postgres_baileys
+      - redis_baileys
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "1.0"
+          memory: 1024M
+
+      # Labels para Traefik
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=traefik_baileys_public
+
+        # Router principal
+        - traefik.http.routers.chatwoot-baileys.rule=Host(`baileys.senaia.in`)
+        - traefik.http.routers.chatwoot-baileys.entrypoints=websecure
+        - traefik.http.routers.chatwoot-baileys.tls.certresolver=letsencrypt
+        - traefik.http.services.chatwoot-baileys.loadbalancer.server.port=3040
+        - traefik.http.services.chatwoot-baileys.loadbalancer.server.scheme=http
+
+        # Force HTTP for backend communication
+        - traefik.http.services.chatwoot-baileys.loadbalancer.passhostheader=true
+
+        # Health check disabled - remove healthcheck labels completely
+
+        # Middleware para SSL termination e headers especiais
+        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-Port=443
+        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-For=%a
+        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-Host=baileys.senaia.in
+        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Real-IP=%a
+
+        # CORS headers
+        - traefik.http.middlewares.chatwoot-baileys-cors.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE,PATCH
+        - traefik.http.middlewares.chatwoot-baileys-cors.headers.accesscontrolalloworiginlist=https://baileys.senaia.in
+        - traefik.http.middlewares.chatwoot-baileys-cors.headers.accesscontrolmaxage=100
+        - traefik.http.middlewares.chatwoot-baileys-cors.headers.addvaryheader=true
+
+        # Aplicar middlewares
+        - traefik.http.routers.chatwoot-baileys.middlewares=chatwoot-baileys-headers,chatwoot-baileys-cors
+
+      update_config:
+        parallelism: 1
+        delay: 60s
+        order: stop-first
+        failure_action: rollback
+        monitor: 120s
+
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 3
+        window: 120s
+
+  # Worker Sidekiq para processamento em background
+  chatwoot_baileys_sidekiq:
+    image: 'ghcr.io/fazer-ai/chatwoot:latest'
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_baileys_network
+
+    volumes:
+      - chatwoot_baileys_storage:/app/storage
+
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - DEFAULT_LOCALE=pt_BR
+
+      # Base configuration - MESMA CHAVE DO RAILS!
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=https://baileys.senaia.in
+      - INTERNAL_HOST_URL=http://chatwoot_baileys_rails:3040
+      - FORCE_SSL=false
+      - ENABLE_ACCOUNT_SIGNUP=false
+
+      # Database configuration
+      - POSTGRES_HOST=postgres_baileys
+      - POSTGRES_USERNAME=chatwoot_database
+      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+      - POSTGRES_DATABASE=chatwoot_baileys_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_STATEMENT_TIMEOUT=14s
+      - RAILS_MAX_THREADS=5
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis_baileys:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Storage configuration
+      - ACTIVE_STORAGE_SERVICE=local
+
+      # Baileys Provider Configuration
+      - BAILEYS_PROVIDER_DEFAULT_CLIENT_NAME=chatwoot-baileys
+      - BAILEYS_PROVIDER_DEFAULT_URL=http://baileys_api:3025
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - BAILEYS_PROVIDER_USE_INTERNAL_HOST_URL=true
+
+      # Email configuration
+      - MAILER_SENDER_EMAIL=Chatwoot Baileys <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=edmoauhradsarvmw
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=baileys.senaia.in
+
+      # Performance settings
+      - SIDEKIQ_CONCURRENCY=10
+      - RAILS_LOG_TO_STDOUT=true
+      - LOG_LEVEL=info
+      - LOG_SIZE=500
+      - ENABLE_RACK_ATTACK=true
+      - RACK_ATTACK_LIMIT=300
+      - ENABLE_RACK_ATTACK_WIDGET_API=true
+
+      # Features
+      - ENABLE_PUSH_RELAY_SERVER=true
+      - IOS_APP_ID=L7YLMN4634.com.chatwoot.app
+      - ANDROID_BUNDLE_ID=com.chatwoot.app
+      - ANDROID_SHA256_CERT_FINGERPRINT=AC:73:8E:DE:EB:56:EA:CC:10:87:02:A7:65:37:7B:38:D4:5D:D4:53:F8:3B:FB:D3:C6:28:64:1D:AA:08:1E:D8
+
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+
+    depends_on:
+      - postgres_baileys
+      - redis_baileys
+      - chatwoot_baileys_rails
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1536M
+        reservations:
+          cpus: "0.5"
+          memory: 768M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+    # Healthcheck para Sidekiq
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep sidekiq | grep -v grep || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # Baileys API Service
+  baileys_api:
+    image: "ghcr.io/fazer-ai/baileys-api:latest"
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_baileys_network
+      - traefik_baileys_public
+
+    volumes:
+      - chatwoot_baileys_storage:/app/storage
+
+    environment:
+      # Node Environment
+      - NODE_ENV=production
+
+      # Redis configuration
+      - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis_baileys:6379
+      - REDIS_PASSWORD=J40geWtC08VoaUqoZ
+
+      # Logging configuration
+      - LOG_LEVEL=info
+      - BAILEYS_LOG_LEVEL=error
+
+      # API Key configuration
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+
+    command:
+      - sh
+      - "-c"
+      - "bun manage-api-keys create user 194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 && bun start"
+
+    depends_on:
+      - redis_baileys
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+      # Labels para Traefik - Baileys API
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=traefik_baileys_public
+
+        # Router para Baileys API
+        - traefik.http.routers.baileys-api.rule=Host(`baileys-api.senaia.in`)
+        - traefik.http.routers.baileys-api.entrypoints=websecure
+        - traefik.http.routers.baileys-api.tls.certresolver=letsencrypt
+        - traefik.http.services.baileys-api.loadbalancer.server.port=3025
+        - traefik.http.services.baileys-api.loadbalancer.server.scheme=http
+
+        # Force HTTP for backend communication
+        - traefik.http.services.baileys-api.loadbalancer.passhostheader=true
+
+        # Health check disabled - remove healthcheck labels completely
+
+        # Middleware para headers especiais e SSL termination
+        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-Port=443
+        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-For=%a
+        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-Host=baileys-api.senaia.in
+        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Real-IP=%a
+        - traefik.http.routers.baileys-api.middlewares=baileys-api-headers
+
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 3
+        window: 120s
+
+    # Healthcheck para Baileys API
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3025/status || exit 1"]
+      interval: 20s
+      timeout: 20s
+      retries: 10
+      start_period: 60s
+
+networks:
+  # Rede interna para comunicação entre serviços
+  app_baileys_network:
+    external: true
+
+  # Rede pública para Traefik
+  traefik_baileys_public:
+    external: true
+
+volumes:
+  # Dados do PostgreSQL
+  postgres_baileys_data:
+    driver: local
+
+  # Dados do Redis
+  redis_baileys_data:
+    driver: local
+
+  # Storage compartilhado para Chatwoot e Baileys
+  chatwoot_baileys_storage:
+    driver: local

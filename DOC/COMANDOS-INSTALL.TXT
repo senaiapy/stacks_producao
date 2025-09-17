@@ -47,8 +47,9 @@ docker swarm init
 6️⃣ Criação da Rede
 Agora, crie a rede para os containers:
 docker network create --driver=overlay network_public
-
-
+docker network create  --driver=overlay  traefik_baileys_public
+ docker network create  --driver=overlay app_baileys_network
+ 
 7️⃣ Configuração do Arquivo traefik.yaml
 Abra o editor de texto:
 nano traefik.yaml
