@@ -206,28 +206,12 @@ services:
         - traefik.http.routers.chatwoot-baileys.entrypoints=websecure
         - traefik.http.routers.chatwoot-baileys.tls.certresolver=letsencrypt
         - traefik.http.services.chatwoot-baileys.loadbalancer.server.port=3040
-        - traefik.http.services.chatwoot-baileys.loadbalancer.server.scheme=http
-
-        # Force HTTP for backend communication
-        - traefik.http.services.chatwoot-baileys.loadbalancer.passhostheader=true
-
-        # Health check disabled - remove healthcheck labels completely
 
         # Middleware para SSL termination e headers especiais
         - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-Proto=https
         - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-Port=443
-        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-For=%a
-        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Forwarded-Host=baileys.senaia.in
-        - traefik.http.middlewares.chatwoot-baileys-headers.headers.customrequestheaders.X-Real-IP=%a
+        - traefik.http.routers.chatwoot-baileys.middlewares=chatwoot-baileys-headers
 
-        # CORS headers
-        - traefik.http.middlewares.chatwoot-baileys-cors.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE,PATCH
-        - traefik.http.middlewares.chatwoot-baileys-cors.headers.accesscontrolalloworiginlist=https://baileys.senaia.in
-        - traefik.http.middlewares.chatwoot-baileys-cors.headers.accesscontrolmaxage=100
-        - traefik.http.middlewares.chatwoot-baileys-cors.headers.addvaryheader=true
-
-        # Aplicar middlewares
-        - traefik.http.routers.chatwoot-baileys.middlewares=chatwoot-baileys-headers,chatwoot-baileys-cors
 
       update_config:
         parallelism: 1
@@ -420,20 +404,12 @@ services:
         - traefik.http.routers.baileys-api.rule=Host(`baileys-api.senaia.in`)
         - traefik.http.routers.baileys-api.entrypoints=websecure
         - traefik.http.routers.baileys-api.tls.certresolver=letsencrypt
-        - traefik.http.services.baileys-api.loadbalancer.server.port=3025
-        - traefik.http.services.baileys-api.loadbalancer.server.scheme=http
+        - traefik.http.services.baileys-api.loadbalancer.server.port=3040
 
-        # Force HTTP for backend communication
-        - traefik.http.services.baileys-api.loadbalancer.passhostheader=true
-
-        # Health check disabled - remove healthcheck labels completely
-
+     
         # Middleware para headers especiais e SSL termination
         - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-Proto=https
         - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-Port=443
-        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-For=%a
-        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Forwarded-Host=baileys-api.senaia.in
-        - traefik.http.middlewares.baileys-api-headers.headers.customrequestheaders.X-Real-IP=%a
         - traefik.http.routers.baileys-api.middlewares=baileys-api-headers
 
       restart_policy:
