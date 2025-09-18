@@ -363,6 +363,11 @@ services:
       # Node Environment
       - NODE_ENV=production
 
+      # SSL/TLS Configuration
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - HTTPS_PROXY=
+      - HTTP_PROXY=
+
       # Redis configuration
       - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis_baileys:6379
       - REDIS_HOST=redis_baileys
@@ -375,6 +380,11 @@ services:
 
       # API Key configuration
       - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+
+      # CORS and Webhook configuration
+      - CORS_ORIGIN=*
+      - WEBHOOK_URL=https://baileys.senaia.in/webhooks/whatsapp
+      - WEBHOOK_ENABLED=true
 
     command:
       - sh
@@ -394,11 +404,11 @@ services:
 
       resources:
         limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
           cpus: "1.0"
           memory: 1024M
-        reservations:
-          cpus: "0.5"
-          memory: 512M
 
       # Labels para Traefik - Baileys API
       labels:
@@ -426,10 +436,10 @@ services:
     # Healthcheck para Baileys API
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3025/status || exit 1"]
-      interval: 20s
-      timeout: 20s
-      retries: 10
-      start_period: 60s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
 
 networks:
   # Rede interna para comunicação entre serviços
