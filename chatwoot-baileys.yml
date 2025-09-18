@@ -7,7 +7,7 @@ services:
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
 
     networks:
-      - app_baileys_network
+      - app_network
 
     volumes:
       - postgres_baileys_data:/var/lib/postgresql/data
@@ -54,7 +54,7 @@ services:
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
 
     networks:
-      - app_baileys_network
+      - app_network
 
     volumes:
       - redis_baileys_data:/data
@@ -103,8 +103,8 @@ services:
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
 
     networks:
-      - app_baileys_network      # Conecta com PostgreSQL/Redis
-      - traefik_baileys_public   # Exposição via Traefik
+      - app_network      # Conecta com PostgreSQL/Redis
+      - traefik_public   # Exposição via Traefik
 
     volumes:
       - chatwoot_baileys_storage:/app/storage
@@ -176,6 +176,9 @@ services:
       sh -c "bundle exec rails db:chatwoot_prepare &&
              bundle exec rails s -p 3040 -b 0.0.0.0"
 
+    ports:
+      - "3040:3040"
+
     depends_on:
       - postgres_baileys
       - redis_baileys
@@ -199,7 +202,7 @@ services:
       # Labels para Traefik
       labels:
         - traefik.enable=true
-        - traefik.swarm.network=traefik_baileys_public
+        - traefik.swarm.network=traefik_public
 
         # Router principal
         - traefik.http.routers.chatwoot-baileys.rule=Host(`baileys.senaia.in`)
@@ -232,7 +235,7 @@ services:
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
 
     networks:
-      - app_baileys_network
+      - app_network
 
     volumes:
       - chatwoot_baileys_storage:/app/storage
@@ -350,8 +353,8 @@ services:
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
 
     networks:
-      - app_baileys_network
-      - traefik_baileys_public
+      - app_network
+      - traefik_public
 
     volumes:
       - chatwoot_baileys_storage:/app/storage
@@ -362,6 +365,8 @@ services:
 
       # Redis configuration
       - REDIS_URL=redis://:J40geWtC08VoaUqoZ@redis_baileys:6379
+      - REDIS_HOST=redis_baileys
+      - REDIS_PORT=6379
       - REDIS_PASSWORD=J40geWtC08VoaUqoZ
 
       # Logging configuration
@@ -398,13 +403,13 @@ services:
       # Labels para Traefik - Baileys API
       labels:
         - traefik.enable=true
-        - traefik.swarm.network=traefik_baileys_public
+        - traefik.swarm.network=traefik_public
 
         # Router para Baileys API
         - traefik.http.routers.baileys-api.rule=Host(`baileys-api.senaia.in`)
         - traefik.http.routers.baileys-api.entrypoints=websecure
         - traefik.http.routers.baileys-api.tls.certresolver=letsencrypt
-        - traefik.http.services.baileys-api.loadbalancer.server.port=3040
+        - traefik.http.services.baileys-api.loadbalancer.server.port=3025
 
      
         # Middleware para headers especiais e SSL termination
@@ -428,11 +433,10 @@ services:
 
 networks:
   # Rede interna para comunicação entre serviços
-  app_baileys_network:
+  app_network:
     external: true
-
   # Rede pública para Traefik
-  traefik_baileys_public:
+  traefik_public:
     external: true
 
 volumes:
