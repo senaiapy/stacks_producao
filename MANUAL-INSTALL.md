@@ -60,16 +60,8 @@ docker network create --driver=overlay supabase-net
 
 ## 🔧 3. Configuração dos Serviços
 
-### 3.1 Traefik (Proxy Reverso)
-```bash
-# Editar configuração
-nano traefik.yaml
 
-# Implantar stack
-docker stack deploy --prune --resolve-image always -c traefik.yaml traefik
-```
-
-### 3.2 Portainer (Gerenciamento Docker)
+### 3.1 Portainer (Gerenciamento Docker) ####################################
 ```bash
 # Instalar Portainer
 docker run -d -p 9000:9000 --name portainer --restart always \
@@ -78,9 +70,19 @@ docker run -d -p 9000:9000 --name portainer --restart always \
   portainer/portainer-ce:latest --http-enabled
 ```
 
+### 3.2 Traefik (Proxy Reverso) ##############################################
+```bash
+# Editar configuração
+nano traefik.yaml
+
+# Implantar stack
+docker stack deploy --prune --resolve-image always -c traefik.yaml traefik
+```
+
+
 ## 🗃️ 4. Bancos de Dados
 
-### 4.1 PostgreSQL
+### 4.1 PostgreSQL  ###########################################################
 **Credenciais:**
 - **Porta:** 5432
 - **Usuário:** chatwoot_database
@@ -106,12 +108,12 @@ CREATE DATABASE supabase_db;
 \l
 ```
 
-### 4.2 Redis
+### 4.2 Redis  #######################################################################
 **Credenciais:**
 - **Porta:** 6379
 - **Senha:** J40geWtC08VoaUqoZ
 
-### 4.3 MinIO (Storage S3)
+### 4.3 MinIO (Storage S3) #############################################################
 **Credenciais:**
 - **Usuário:** marceluphd
 - **Senha:** 1:7khB-=2898
@@ -129,7 +131,7 @@ mkdir -p /var/data/minio
 # - chatwoot
 ```
 
-## 📧 5. N8N (Automação)
+## 📧 5. N8N (Automação) ##################################################################
 
 ### 5.1 Configuração
 **Credenciais:**
@@ -153,7 +155,7 @@ Instalar via Settings > Plugins:
 - `n8n-nodes-evolution-api`
 - `@devlikeapro/n8n-nodes-chatwoot`
 
-## 💬 6. Chatwoot (Atendimento)
+## 💬 6. Chatwoot (Atendimento) ##############################################################
 
 ### 6.1 Configuração
 **Credenciais:**
@@ -185,7 +187,7 @@ docker stack rm chatwoot-migrate
 docker stack deploy -c chatwoot.yml chatwoot
 ```
 
-## 📱 7. Evolution API (WhatsApp)
+## 📱 7. Evolution API (WhatsApp) ############################################################
 
 ### 7.1 Configuração
 **Credenciais:**
@@ -208,7 +210,7 @@ docker stack deploy -c chatwoot.yml chatwoot
 4. Dias de importação: 7
 5. Ativar autocreate
 
-## 🌐 8. Nginx Proxy Manager
+## 🌐 8. Nginx Proxy Manager ###############################################################
 
 ### 8.1 Configuração
 **Credenciais:**
@@ -225,8 +227,10 @@ mkdir -p /var/data/npm/letsencrypt
 # Implantar stack
 docker stack deploy -c nproxy.yml nginx-proxy
 ```
+# http access
+http://217.79.184.8:8181/
 
-## ☁️ 9. Supabase
+## ☁️ 9. Supabase #############################################################################
 
 ### 9.1 Configuração
 **Portas:**
@@ -236,6 +240,8 @@ docker stack deploy -c nproxy.yml nginx-proxy
 ### 9.2 Banco de Dados
 Database criada: `supabase_db`
 
+##############################################################################################
+##############################################################################################
 ## 📊 10. Portas em Uso
 
 | Serviço | Porta | Tipo |
