@@ -48,8 +48,9 @@ docker swarm init
 Agora, crie a rede para os containers:
 docker network create --driver=overlay network_public
 docker network create  --driver=overlay  traefik_baileys_public
- docker network create  --driver=overlay app_baileys_network
- 
+docker network create  --driver=overlay app_baileys_network
+docker network create  --driver=overlay supabase-net
+
 7️⃣ Configuração do Arquivo traefik.yaml
 Abra o editor de texto:
 nano traefik.yaml
@@ -212,7 +213,48 @@ psql -U chatwoot_database -d chatwoot_database
 
 #Crie o Banco de Dados do CHATWOOT
 CREATE DATABASE supabase_db;
+
+
+################ NGINX PROXY MANAGER #################
+
+# OPEN PORTS 8181
+# CREATE A DIR /var/data/npm
+# mkdir -p /var/data/npm/data
+# mkdir -p /var/data/npm/letsencrypt
+# up stack nproxy.yml
+
+# Creating a new user: admin@example.com with password: changeme
+
+#   
+#   ## Step 1: Create the Proxy Host in Nginx Proxy Manager
+#   Now, log into your NPM web interface (e.g., https://npm.yourdomain.#   com or http://your-server-ip:8181).
+#   Go to Hosts -> Proxy Hosts.
+#   Click Add Proxy Host.
+#   Fill out the form exactly like this:
+#   Under the Details Tab:
+#   
+#   Domain Names: portainer.yourdomain.com (The public address you #  #  want to use).
+#   
+#   Scheme: http
+#   
+#   Forward Hostname / IP: portainer
+#   
+#   This is the magic part. You are using the Docker service name from #   the docker-compose.yml file. Because NPM and Portainer are on the #   same #web-proxy network, NPM can find the Portainer container just #   its #name. You don't need to know its internal IP address.
+#   
+#   Forward Port: 9000
+#   
+#   This is the default internal port that Portainer uses.
+#   Enable Block Common Exploits.
+#   Under the SSL Tab:
+#   SSL Certificate: Select "Request a new SSL Certificate".
+#   Enable Force SSL and HTTP/2 Support.
+#   Agree to the Let's Encrypt Terms of Service.
+#   Click Save.
+#   ############################################################
 ############################################################
+############################################################
+############################################################
+
 ####### PORTAINER RUNNING IN http://217.79.184.8:9000
 ####### AND ACCESS FOR https://painel.senaia.in
 
@@ -292,3 +334,7 @@ pass LcXEtOWi3xX0HNFY4EbMT9sPWcMbT1nu
 
 evo.senaia.in
 clubdeofertas 1230F54682FF-4CDA-839C-AA9FBCBF910A 595985511359
+
+##---------------------------- nginx proxy manager
+user marcelu.phd@gmail.com
+pass @450Ab----28----nproxy

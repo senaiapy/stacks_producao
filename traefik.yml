@@ -1,3 +1,4 @@
+# OPEN PORTS 80, 443 AND 8080 IF DASHBOARD IS ENABLED
 version: '3.8'
 
 services:
@@ -97,7 +98,7 @@ services:
       #labels:
         # Labels do dashboard comentadas para produção
         # - traefik.enable=true
-        # - traefik.docker.network=traefik_public
+        # - traefik.swarm.network=traefik_public
         
         # # Router para dashboard
         # - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.senaia.in`)

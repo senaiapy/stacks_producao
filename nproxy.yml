@@ -1,0 +1,44 @@
+# OPEN PORTS 8181
+# CREATE A DIR /var/data/npm
+# mkdir -p /var/data/npm/data
+# mkdir -p /var/data/npm/letsencrypt
+
+version: '3.8'
+
+services:
+ 
+  # ----------------------------------------------------------------
+  # 2. NGINX PROXY MANAGER - Managed by Traefik
+  # ----------------------------------------------------------------
+  npm:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    # ⚠️ DO NOT map ports 80 or 443 here! Traefik is handling them.
+    ports:
+      - '8181:81' # Map the admin UI to a different host port (e.g., http://your-server-ip:8181)
+    volumes:
+      - /var/data/npm/data:/data
+      - /var/data/npm/letsencrypt:/etc/letsencrypt
+    networks:
+      - traefik_public
+    labels:
+      # --- Traefik Labels ---
+      - "traefik.enable=true"
+      - "traefik.swarm.network=traefik_public"
+
+      # Create a router for the NPM admin panel
+      - "traefik.http.routers.npm.rule=Host(`nproxy.senaia.in`)"
+      - "traefik.http.routers.npm.entrypoints=websecure"
+      - "traefik.http.routers.npm.tls=true"
+      - "traefik.http.routers.npm.tls.certresolver=letsencrypt"
+      # Tell Traefik to forward traffic to this container on its internal port 81
+      - "traefik.http.services.npm.loadbalancer.server.port=81"
+    #restart_policy:
+    #   condition: on-failure
+    #   delay: 20s          # Delay maior para load balancer
+    #   max_attempts: 5     # Mais tentativas
+
+networks:
+  traefik_public:
+    external: true

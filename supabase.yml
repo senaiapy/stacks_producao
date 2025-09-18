@@ -1,0 +1,993 @@
+version: "3.8"
+
+services:
+  # Supabase Studio - Web-based UI
+  studio:
+    image: supabase/studio:20250224-d10db0f
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+      - traefik_public
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})"
+        ]
+      timeout: 30s
+      interval: 5s
+      retries: 3
+
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: Ma1x1x0x!!Ma1x1x0x!!
+
+      DEFAULT_ORGANIZATION_NAME: senaia.ai
+      DEFAULT_PROJECT_NAME: senaia.ai
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: https://supabase.senaia.in
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      AUTH_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+
+      LOGFLARE_API_KEY: 7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+      LOGFLARE_URL: http://analytics:4000
+      NEXT_PUBLIC_ENABLE_LOGS: "true"
+      # Comment to use Big Query backend for analytics
+      NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
+      # Uncomment to use Big Query backend for analytics
+      # NEXT_ANALYTICS_BACKEND_PROVIDER: bigquery
+
+    depends_on:
+      - analytics
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.supabase-studio.rule=Host(`studio.senaia.in`)"
+        - "traefik.http.routers.supabase-studio.entrypoints=websecure"
+        - "traefik.http.routers.supabase-studio.tls.certresolver=letsencrypt"
+        - "traefik.http.services.supabase-studio.loadbalancer.server.port=3000"
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Kong - API Gateway
+  kong:
+    image: kong:2.8.1
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+      - traefik_public
+
+    # volumes:
+      # Kong configuration file not needed for basic setup
+      # - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+
+    depends_on:
+      - analytics
+
+    environment:
+      KONG_DATABASE: "off"
+      # KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml  # Disabled - no config file
+      # https://github.com/supabase/cli/issues/14
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      DASHBOARD_USERNAME: supabase
+      DASHBOARD_PASSWORD: Ma1x1x0x_testing
+
+    # Use default Kong configuration
+    # entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.supabase-api.rule=Host(`supabase.senaia.in`)"
+        - "traefik.http.routers.supabase-api.entrypoints=websecure"
+        - "traefik.http.routers.supabase-api.tls.certresolver=letsencrypt"
+        - "traefik.http.services.supabase-api.loadbalancer.server.port=8000"
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # GoTrue - Auth Service
+  auth:
+    image: supabase/gotrue:v2.170.0
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9999/health"
+        ]
+      timeout: 30s
+      interval: 5s
+      retries: 3
+
+    depends_on:
+      - analytics
+
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: https://supabase.senaia.in
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://chatwoot_database:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/chatwoot_database
+
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST:
+      GOTRUE_DISABLE_SIGNUP: "false"
+
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+
+      # Uncomment to bypass nonce check in ID Token flow. Commonly set to true when using Google Sign In on mobile.
+      # GOTRUE_EXTERNAL_SKIP_NONCE_CHECK: true
+
+      # GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: true
+      # GOTRUE_SMTP_MAX_FREQUENCY: 1s
+      GOTRUE_SMTP_ADMIN_EMAIL: Supabase <marcelu.phd@gmail.com>
+      GOTRUE_SMTP_HOST: supabase-mail
+      GOTRUE_SMTP_PORT: 2500
+      GOTRUE_SMTP_USER: fake_mail_user
+      GOTRUE_SMTP_PASS: fake_mail_password
+      GOTRUE_SMTP_SENDER_NAME: fake_sender
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "true"
+      GOTRUE_SMS_AUTOCONFIRM: "true"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # PostgREST - RESTful API
+  rest:
+    image: postgrest/postgrest:v12.2.8
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    depends_on:
+      - analytics
+
+    environment:
+      PGRST_DB_URI: postgres://authenticator:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/chatwoot_database
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+
+    command:
+      [
+        "postgrest"
+      ]
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Realtime - Real-time subscriptions
+  realtime:
+    # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
+    image: supabase/realtime:v2.34.40
+    hostname: "realtime-dev.{{.Service.Name}}"
+
+    networks:
+      - app_network
+
+    depends_on:
+      - analytics
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-sSfL",
+          "--head",
+          "-o",
+          "/dev/null",
+          "-H",
+          "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao",
+          "http://localhost:4000/api/tenants/realtime-dev/health"
+        ]
+      timeout: 30s
+      interval: 5s
+      retries: 3
+
+    environment:
+      PORT: 4000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: chatwoot_database
+      DB_PASSWORD: Ma1x1x0x!!Ma1x1x0x!!
+      DB_NAME: chatwoot_database
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime,public'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "false"
+      RUN_JANITOR: "false"
+
+      # Database pool configuration to avoid connection issues
+      DB_POOL_SIZE: "10"
+      DB_QUEUE_TARGET: "5000"
+      DB_QUEUE_INTERVAL: "5000"
+
+      # Disable automatic migrations to avoid schema conflicts
+      DISABLE_AUTO_MIGRATION: "true"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Storage API
+  storage:
+    image: supabase/storage-api:v1.19.3
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    volumes:
+      - supabase_storage:/var/lib/storage
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://storage:5000/status"
+        ]
+      timeout: 30s
+      interval: 5s
+      retries: 3
+
+    depends_on:
+      - rest
+      - imgproxy
+
+    environment:
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      DATABASE_URL: postgres://supabase_storage_admin:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/chatwoot_database
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      # TODO: https://github.com/supabase/storage-api/issues/55
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Image Proxy
+  imgproxy:
+    image: darthsim/imgproxy:v3.8.0
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    volumes:
+      - supabase_storage:/var/lib/storage
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "imgproxy",
+          "health"
+        ]
+      timeout: 30s
+      interval: 5s
+      retries: 3
+
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Meta API
+  meta:
+    image: supabase/postgres-meta:v0.86.1
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    depends_on:
+      - analytics
+
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: postgres
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: chatwoot_database
+      PG_META_DB_USER: chatwoot_database
+      PG_META_DB_PASSWORD: Ma1x1x0x!!Ma1x1x0x!!
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Edge Functions
+  functions:
+    image: supabase/edge-runtime:v1.67.2
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    volumes:
+      - supabase_functions:/home/deno/functions
+
+    depends_on:
+      - analytics
+
+    environment:
+      JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      SUPABASE_DB_URL: postgresql://chatwoot_database:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/chatwoot_database
+      # TODO: Allow configuring VERIFY_JWT per function. This PR might help: https://github.com/supabase/cli/pull/786
+      VERIFY_JWT: "false"
+
+    command:
+      [
+        "start",
+        "--main-service",
+        "/home/deno/functions/main"
+      ]
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Analytics
+  analytics:
+    image: supabase/logflare:1.12.5
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    # Uncomment to use Big Query backend for analytics
+    # volumes:
+    #   - type: bind
+    #     source: ${PWD}/gcloud.json
+    #     target: /opt/app/rel/logflare/bin/gcloud.json
+    #     read_only: true
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "http://localhost:4000/health"
+        ]
+      timeout: 30s
+      interval: 5s
+      retries: 10
+
+    depends_on: []
+
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      DB_USERNAME: chatwoot_database
+      DB_DATABASE: chatwoot_database
+      DB_HOSTNAME: postgres
+      DB_PORT: 5432
+      DB_PASSWORD: Ma1x1x0x!!Ma1x1x0x!!
+      DB_SCHEMA: _analytics
+      LOGFLARE_API_KEY: 7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+      LOGFLARE_SINGLE_TENANT: "true"
+      LOGFLARE_SUPABASE_MODE: "true"
+      LOGFLARE_MIN_CLUSTER_SIZE: 1
+
+      # Comment variables to use Big Query backend for analytics
+      POSTGRES_BACKEND_URL: postgresql://chatwoot_database:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/chatwoot_database
+      POSTGRES_BACKEND_SCHEMA: _analytics
+      LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
+      # Uncomment to use Big Query backend for analytics
+      # GOOGLE_PROJECT_ID: GOOGLE_PROJECT_ID
+      # GOOGLE_PROJECT_NUMBER: GOOGLE_PROJECT_NUMBER
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Internal DB service removed - using external PostgreSQL stack from postgres.yml
+
+  # Vector - Log collection and forwarding
+  vector:
+    image: timberio/vector:0.28.1-alpine
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    volumes:
+      # Vector config not needed for basic setup
+      # - supabase_vector_config:/etc/vector/vector.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://vector:9001/health"
+        ]
+      timeout: 30s
+      interval: 5s
+      retries: 3
+
+    environment:
+      LOGFLARE_API_KEY: 7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+
+    # command:
+      # Vector will use default config
+      # [
+      #   "--config",
+      #   "/etc/vector/vector.yml"
+      # ]
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+  # Update the DATABASE_URL if you are using an external Postgres database
+  supavisor:
+    image: supabase/supavisor:2.4.12
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+      - traefik_public
+
+    # volumes:
+      # Pooler config not needed for basic setup
+      # - supabase_pooler_config:/etc/pooler/pooler.exs:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-sSfL",
+          "--head",
+          "-o",
+          "/dev/null",
+          "http://127.0.0.1:4000/api/health"
+        ]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+
+    depends_on:
+      - analytics
+
+    environment:
+      PORT: 4000
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: chatwoot_database
+      POSTGRES_PASSWORD: Ma1x1x0x!!Ma1x1x0x!!
+      DATABASE_URL: ecto://chatwoot_database:Ma1x1x0x!!Ma1x1x0x!!@postgres:5432/chatwoot_database
+      CLUSTER_POSTGRES: "true"
+      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+      VAULT_ENC_KEY: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      API_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      METRICS_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      REGION: local
+      ERL_AFLAGS: -proto_dist inet_tcp
+      POOLER_TENANT_ID: senaia.ai
+      POOLER_DEFAULT_POOL_SIZE: 20
+      POOLER_MAX_CLIENT_CONN: 100
+      POOLER_POOL_MODE: transaction
+
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "/app/bin/migrate && /app/bin/server"
+      ]
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.supabase-pooler.rule=Host(`pooler.senaia.in`)"
+        - "traefik.http.routers.supabase-pooler.entrypoints=websecure"
+        - "traefik.http.routers.supabase-pooler.tls.certresolver=letsencrypt"
+        - "traefik.http.services.supabase-pooler.loadbalancer.server.port=5432"
+
+        # PostgreSQL connection pooler for external access
+        - "traefik.tcp.routers.supabase-pooler-tcp.rule=HostSNI(`pooler.senaia.in`)"
+        - "traefik.tcp.routers.supabase-pooler-tcp.entrypoints=postgres"
+        - "traefik.tcp.routers.supabase-pooler-tcp.service=supabase-pooler-tcp"
+        - "traefik.tcp.services.supabase-pooler-tcp.loadbalancer.server.port=6543"
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+volumes:
+  supabase_storage:
+    driver: local
+  supabase_functions:
+    driver: local
+  # supabase_db_data: # Removed - using external PostgreSQL
+  #   driver: local
+  # Removed unused database volumes - using external PostgreSQL
+  # supabase_db_config:
+  #   driver: local
+  # supabase_db_realtime:
+  #   driver: local
+  # supabase_db_webhooks:
+  #   driver: local
+  # supabase_db_roles:
+  #   driver: local
+  # supabase_db_jwt:
+  #   driver: local
+  # supabase_db_supabase:
+  #   driver: local
+  # supabase_db_logs:
+  #   driver: local
+  # supabase_db_pooler:
+  #   driver: local
+  # supabase_vector_config:
+  #   driver: local
+  # supabase_pooler_config:
+  #   driver: local
+
+networks:
+  app_network:
+    driver: overlay
+    external: true
+  traefik_public:
+    driver: overlay
+    external: true
+
+# Production Environment Variables Reference
+# All variables are now hardcoded from .env.supabase.local for production deployment
+#
+# ############
+# # Secrets
+# ############
+# POSTGRES_PASSWORD=Ma1x1x0x_testing
+# JWT_SECRET=DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+# ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+# SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+# DASHBOARD_USERNAME=supabase
+# DASHBOARD_PASSWORD=Ma1x1x0x_testing
+# SECRET_KEY_BASE=UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+# VAULT_ENC_KEY=DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+#
+# ############
+# # Database
+# ############
+# POSTGRES_HOST=db
+# POSTGRES_DB=postgres
+# POSTGRES_PORT=5432
+#
+# ############
+# # API Configuration
+# ############
+# API_EXTERNAL_URL=https://supabase.senaia.in
+# SITE_URL=http://localhost:3000
+# SUPABASE_PUBLIC_URL=https://supabase.senaia.in
+# PGRST_DB_SCHEMAS=public,storage,graphql_public
+#
+# ############
+# # Authentication
+# ############
+# JWT_EXPIRY=3600
+# DISABLE_SIGNUP=false
+# ADDITIONAL_REDIRECT_URLS=
+# ENABLE_EMAIL_SIGNUP=true
+# ENABLE_EMAIL_AUTOCONFIRM=false
+# ENABLE_ANONYMOUS_USERS=false
+# ENABLE_PHONE_SIGNUP=true
+# ENABLE_PHONE_AUTOCONFIRM=true
+#
+# ############
+# # SMTP Configuration
+# ############
+# SMTP_ADMIN_EMAIL=admin@example.com
+# SMTP_HOST=supabase-mail
+# SMTP_PORT=2500
+# SMTP_USER=fake_mail_user
+# SMTP_PASS=fake_mail_password
+# SMTP_SENDER_NAME=fake_sender
+# MAILER_URLPATHS_CONFIRMATION=/auth/v1/verify
+# MAILER_URLPATHS_INVITE=/auth/v1/verify
+# MAILER_URLPATHS_RECOVERY=/auth/v1/verify
+# MAILER_URLPATHS_EMAIL_CHANGE=/auth/v1/verify
+#
+# ############
+# # Studio
+# ############
+# STUDIO_DEFAULT_ORGANIZATION=senaia.ai
+# STUDIO_DEFAULT_PROJECT=senaia.ai
+# OPENAI_API_KEY=your_openai_api_key_here
+#
+# ############
+# # Functions
+# ############
+# FUNCTIONS_VERIFY_JWT=false
+#
+# ############
+# # Analytics/Logs
+# ############
+# LOGFLARE_API_KEY=7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+# DOCKER_SOCKET_LOCATION=/var/run/docker.sock
+# IMGPROXY_ENABLE_WEBP_DETECTION=true
+#
+# ############
+# # Pooler
+# ############
+# POOLER_PROXY_PORT_TRANSACTION=6543
+# POOLER_DEFAULT_POOL_SIZE=20
+# POOLER_MAX_CLIENT_CONN=100
+# POOLER_TENANT_ID=senaia.ai
