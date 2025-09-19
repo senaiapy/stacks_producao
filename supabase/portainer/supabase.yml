@@ -1,0 +1,381 @@
+# Supabase Docker Compose Configuration
+version: "3.8"
+
+services:
+  # Supabase Studio - Web-based UI
+  studio:
+    hostname: studio
+    image: supabase/studio
+    deploy:
+      restart_policy:
+        condition: any
+    networks:
+      - app_network
+    healthcheck:
+      test: >
+        node -e "require('http').get('http://localhost:3000/api/profile', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+      timeout: 10s
+      interval: 5s
+      retries: 3
+      start_period: 30s
+    environment:
+      HOSTNAME: 0.0.0.0
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: Ma1x1x0x_testing
+      DEFAULT_ORGANIZATION_NAME: SENAIA
+      DEFAULT_PROJECT_NAME: SENAIA_AI
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: https://supabase.senaia.in
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      AUTH_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      LOGFLARE_API_KEY: 7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+      LOGFLARE_URL: http://analytics:4000
+      NEXT_PUBLIC_ENABLE_LOGS: "1"
+      NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
+
+  # Kong - API Gateway
+  kong:
+    hostname: kong
+    networks:
+      - app_network
+      - traefik_public
+    image: kong:2.8.1
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    deploy:
+      restart_policy:
+        condition: any
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.supabase-http.rule=Host(`supabase.senaia.in`)"
+        - "traefik.http.routers.supabase-http.entrypoints=web"
+        - "traefik.http.routers.supabase-http.middlewares=https-redirect"
+        - "traefik.http.routers.supabase-https.rule=Host(`supabase.senaia.in`)"
+        - "traefik.http.routers.supabase-https.entrypoints=websecure"
+        - "traefik.http.routers.supabase-https.tls=true"
+        - "traefik.http.routers.supabase-https.tls.certresolver=letsencrypt"
+        - "traefik.http.services.supabase.loadbalancer.server.port=8000"
+        - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+      placement:
+        constraints: [node.labels.node-type == primary]
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      DASHBOARD_USERNAME: supabase
+      DASHBOARD_PASSWORD: Ma1x1x0x_testing
+    volumes:
+      - /mnt/data/supabase/api/kong.yml:/home/kong/temp.yml:ro
+
+  # GoTrue - Auth Service
+  auth:
+    hostname: auth
+    networks:
+      - app_network
+    image: supabase/gotrue:v2.151.0
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://auth:9999/health"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    deploy:
+      restart_policy:
+        condition: any
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: https://supabase.senaia.in
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:Ma1x1x0x_testing@db:25432/supabase_db
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: ""
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_SMTP_ADMIN_EMAIL: marcelu.phd@gmail.com
+      GOTRUE_SMTP_HOST: Googlemail
+      GOTRUE_SMTP_PORT: "465"
+      GOTRUE_SMTP_USER: marceluphd
+      GOTRUE_SMTP_PASS: Ma299929
+      GOTRUE_SMTP_SENDER_NAME: Senaia
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_SMS_AUTOCONFIRM: "true"
+
+  # PostgREST - RESTful API
+  rest:
+    networks:
+      - app_network
+    image: postgrest/postgrest:v12.0.1
+    deploy:
+      restart_policy:
+        condition: any
+    environment:
+      PGRST_DB_URI: postgres://authenticator:Ma1x1x0x_testing@db:25432/supabase_db
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      PGRST_APP_SETTINGS_JWT_EXP: "3600"
+    command: "postgrest"
+
+  # Realtime - Real-time subscriptions
+  realtime:
+    networks:
+      - app_network
+    image: supabase/realtime:v2.28.32
+    healthcheck:
+      test: ["CMD-SHELL", 'curl -sSfL --head -o /dev/null -H "Authorization: Bearer $$ANON_KEY" http://localhost:4000/api/tenants/realtime-dev/health']
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    deploy:
+      restart_policy:
+        condition: any
+    environment:
+      PORT: "4000"
+      DB_HOST: db
+      DB_PORT: "25432"
+      DB_USER: supabase_admin
+      DB_PASSWORD: Ma1x1x0x_testing
+      DB_NAME: supabase_db
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      FLY_ALLOC_ID: fly123
+      FLY_APP_NAME: realtime
+      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+      ERL_AFLAGS: -proto_dist inet_tcp
+      ENABLE_TAILSCALE: "false"
+      DNS_NODES: "''"
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+    command: >
+      sh -c "/app/bin/migrate && /app/bin/realtime eval 'Realtime.Release.seeds(Realtime.Repo)' && /app/bin/server"
+
+  # Storage API
+  storage:
+    hostname: storage
+    networks:
+      - app_network
+    image: supabase/storage-api:v1.0.6
+    healthcheck:
+      test: >
+        wget --no-verbose --tries=1 --spider http://0.0.0.0:5000/status
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+    environment:
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      DATABASE_URL: postgres://supabase_storage_admin:Ma1x1x0x_testing@db:25432/supabase_db
+      FILE_SIZE_LIMIT: "52428800"
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+    volumes:
+      - /mnt/data/supabase/storage:/var/lib/storage:z
+
+  # Image Proxy
+  imgproxy:
+    networks:
+      - app_network
+    image: darthsim/imgproxy:v3.8.0
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+    healthcheck:
+      test: [ "CMD", "imgproxy", "health" ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+    volumes:
+      - /mnt/data/supabase/storage:/var/lib/storage:z
+
+  # Meta API
+  meta:
+    hostname: meta
+    networks:
+      - app_network
+    image: supabase/postgres-meta:v0.80.0
+    deploy:
+      restart_policy:
+        condition: any
+    environment:
+      PG_META_PORT: "8080"
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: "25432"
+      PG_META_DB_NAME: supabase_db
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: Ma1x1x0x_testing
+
+  # Edge Functions
+  functions:
+    image: supabase/edge-runtime:v1.54.2
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+    environment:
+      JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      SUPABASE_DB_URL: postgresql://postgres:Ma1x1x0x_testing@db:25432/supabase_db
+      VERIFY_JWT: "false"
+    volumes:
+      - /mnt/data/supabase/functions:/home/deno/functions:Z
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+
+  # Analytics
+  analytics:
+    networks:
+      - app_network
+    image: supabase/logflare:1.4.0
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:4000/health" ]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+    deploy:
+      restart_policy:
+        condition: any
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      DB_USERNAME: supabase_admin
+      DB_DATABASE: supabase_db
+      DB_HOSTNAME: db
+      DB_PORT: "25432"
+      DB_PASSWORD: Ma1x1x0x_testing
+      DB_SCHEMA: _analytics
+      LOGFLARE_API_KEY: 7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+      LOGFLARE_SINGLE_TENANT: "true"
+      LOGFLARE_SUPABASE_MODE: "true"
+      LOGFLARE_MIN_CLUSTER_SIZE: "1"
+      POSTGRES_BACKEND_URL: postgresql://supabase_admin:Ma1x1x0x_testing@db:25432/supabase_db
+      POSTGRES_BACKEND_SCHEMA: _analytics
+      LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
+
+  # Database
+  db:
+    networks:
+      - app_network
+    image: supabase/postgres:15.1.1.61
+    healthcheck:
+      test: pg_isready -U postgres -h localhost
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - log_min_messages=fatal
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: "25432"
+      POSTGRES_PORT: "25432"
+      PGPASSWORD: Ma1x1x0x_testing
+      POSTGRES_PASSWORD: Ma1x1x0x_testing
+      PGDATABASE: supabase_db
+      POSTGRES_DB: supabase_db
+      JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      JWT_EXP: "3600"
+    volumes:
+      - /mnt/data/supabase/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
+      - /mnt/data/supabase/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      - /mnt/data/supabase/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      - /mnt/data/supabase/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - /mnt/data/supabase/db/data:/var/lib/postgresql/data:Z
+      - /mnt/data/supabase/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
+      - db-config:/etc/postgresql-custom
+
+  # Vector - Log collection and forwarding
+  vector:
+    hostname: vector
+    networks:
+      - app_network
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+    image: timberio/vector:0.28.1-alpine
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://vector:9001/health || exit 1
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    volumes:
+      - /mnt/data/supabase/logs/vector.yml:/etc/vector/vector.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LOGFLARE_API_KEY: 7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: 7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+    command: [ "--config", "etc/vector/vector.yml" ]
+
+volumes:
+  db-config:
+
+networks:
+  app_network:
+    external: true
+    name: app_network
+  traefik_public:
+    external: true
+    name: traefik_public
+

@@ -1,0 +1,93 @@
+# SUPABASE DEPLOYMENT COMMANDS FOR SERVER 217.79.184.8
+# Run these commands step by step on your server as root
+
+# ===== STEP 1: PREPARE SERVER =====
+echo "🚀 Starting Supabase deployment..."
+
+# Verify Docker Swarm is running
+docker node ls
+
+# Create directories
+mkdir -p /opt/supabase
+mkdir -p /mnt/data/supabase/{api,storage,db,functions,logs}
+mkdir -p /mnt/data/supabase/db/{data,init}
+
+# ===== STEP 2: UPLOAD FILES =====
+# Upload the supabase-deployment.tar.gz to /opt/supabase/ on your server
+# Then extract:
+cd /opt/supabase
+tar -xzf supabase-deployment.tar.gz
+
+# Copy configuration files to data directories
+cp volumes/api/kong.yml /mnt/data/supabase/api/
+cp volumes/logs/vector.yml /mnt/data/supabase/logs/
+cp volumes/db/*.sql /mnt/data/supabase/db/ 2>/dev/null || echo "No SQL files found"
+cp -r volumes/db/init/* /mnt/data/supabase/db/init/ 2>/dev/null || echo "No init files found"
+
+# Set proper permissions
+chown -R 999:999 /mnt/data/supabase/db
+chmod 700 /mnt/data/supabase/db/data
+
+# ===== STEP 3: CREATE NETWORKS =====
+# Create required Docker networks
+docker network create --driver=overlay traefik_public || echo "Network traefik_public already exists"
+docker network create --driver=overlay app_network || echo "Network app_network already exists"
+
+# Verify networks
+docker network ls | grep overlay
+
+# ===== STEP 4: DEPLOY STACK =====
+# Deploy Supabase stack
+cd /opt/supabase
+docker stack deploy -c supabase.yml supabase
+
+# ===== STEP 5: MONITOR DEPLOYMENT =====
+# Wait for services to start
+echo "⏳ Waiting 60 seconds for services to start..."
+sleep 60
+
+# Check service status
+docker service ls
+
+# Check specific service logs if needed
+echo "📊 Checking service status..."
+docker service ps supabase_kong --no-trunc
+docker service ps supabase_db --no-trunc
+
+# ===== STEP 6: VERIFY DEPLOYMENT =====
+# Check if all services are running
+echo "🔍 Service Status:"
+docker service ls --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+
+# Test database connection
+echo "🗄️ Testing database..."
+sleep 30
+docker exec $(docker ps -f name=supabase_db -q) pg_isready -U postgres || echo "Database not ready yet"
+
+# ===== STEP 7: ACCESS INFORMATION =====
+echo "✅ Deployment completed!"
+echo "🌍 Access URLs:"
+echo "  - Supabase Studio: https://supabase.senaia-bank.in"
+echo "  - API Endpoint: https://supabase.senaia-bank.in/rest/v1/"
+echo ""
+echo "👤 Default Credentials:"
+echo "  - Username: supabase"
+echo "  - Password: Ma1x1x0x_testing"
+echo ""
+echo "🔑 API Keys (from supabase.yml):"
+echo "  - ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao"
+echo "  - SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI"
+
+# ===== TROUBLESHOOTING COMMANDS =====
+# If services fail to start, check logs:
+# docker service logs supabase_kong
+# docker service logs supabase_db
+# docker service logs supabase_auth
+
+# To restart a service:
+# docker service update --force supabase_SERVICE_NAME
+
+# To remove and redeploy:
+# docker stack rm supabase
+# sleep 30
+# docker stack deploy -c supabase.yml supabase

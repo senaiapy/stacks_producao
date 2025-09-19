@@ -29,7 +29,9 @@ basicauth_credentials:
   - consumer: DASHBOARD
     username: $DASHBOARD_USERNAME
     password: $DASHBOARD_PASSWORD
-
+  - consumer: DASHBOARD    
+    username: marcelu.phd@gmail.com    
+    password: "@450Ab6606289828supabase"
 ###
 ### API Routes
 ###
@@ -236,6 +238,6 @@ services:
           - /
     plugins:
       - name: cors
-      # - name: basic-auth
-      #   config:
-      #     hide_credentials: true
+      - name: basic-auth
+        config:
+          hide_credentials: true

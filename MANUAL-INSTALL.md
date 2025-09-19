@@ -24,6 +24,7 @@ URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];
 ### 1.3 Atualização do Sistema
 ```bash
 sudo apt-get update && apt-get install -y apparmor-utils
+sudo apt update && sudo apt install -y sshpass
 ```
 
 ### 1.4 Configuração do Hostname
