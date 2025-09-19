@@ -1,728 +1,753 @@
-# 🚀 Manual Completo - Supabase Stack Docker Swarm
+# Supabase Docker Swarm Migration Manual
 
-Este manual detalha como fazer deploy da stack completa do Supabase usando Docker Swarm em modo produção, incluindo PostgreSQL com pgvector, Auth, Storage, Realtime, Studio Dashboard e Connection Pooler.
+## Overview
 
-## 📋 Arquitetura Supabase Swarm
+This manual provides comprehensive instructions for migrating Supabase from Docker Compose to Docker Swarm mode, including all necessary configuration steps, volume management, and operational procedures.
 
-### Serviços Incluídos
-- **PostgreSQL 15.8** - Banco principal com pgvector para embeddings e IA
-- **Kong API Gateway** - Gateway de APIs, roteamento e rate limiting
-- **GoTrue** - Serviço de autenticação e autorização
-- **PostgREST** - API REST automática do PostgreSQL
-- **Realtime** - WebSockets e subscriptions em tempo real
-- **Storage API** - Gerenciamento de arquivos e storage
-- **ImgProxy** - Processamento e redimensionamento de imagens
-- **Studio Dashboard** - Interface web de administração
-- **Meta API** - API de metadados do banco
-- **Edge Functions** - Execução de funções serverless
-- **Analytics** - Coleta e análise de logs
-- **Vector** - Coleta de logs e métricas
-- **Supavisor** - Connection pooler para PostgreSQL
+## Prerequisites
 
-### Domínios Configurados
-- **Studio**: `https://studio.senaia.in` (Supabase Studio Dashboard)
-- **API**: `https://supabase.senaia.in/rest/v1/` (REST API via Kong)
-- **Auth**: `https://supabase.senaia.in/auth/v1/` (Authentication)
-- **Storage**: `https://supabase.senaia.in/storage/v1/` (File Storage)
-- **Realtime**: `https://supabase.senaia.in/realtime/v1/` (WebSockets)
-- **Pooler**: `https://pooler.senaia.in` (Database Connection Pooler)
+- Docker Swarm initialized
+- External PostgreSQL stack running (postgres.yml)
+- Networks created: `app_network`, `traefik_public`
+- Traefik v3 reverse proxy deployed
 
-## ✅ Pré-requisitos
+## 🔧 Pre-Migration Setup
 
-### 1. Docker Swarm Inicializado
+### 1. Deploy Configuration Files to Server
+
+**IMPORTANT**: The Supabase configuration files need to be deployed to your server first.
+
+#### 🚀 Automated Deployment (Recommended)
+
+Use the Python deployment script for complete automation:
+
 ```bash
-# Verificar se Swarm está ativo
-docker node ls
+# Make script executable
+chmod +x deploy_ssh.py
 
-# Se não estiver ativo, inicializar:
-docker swarm init --advertise-addr=YOUR_SERVER_IP
+# Deploy to your server (replace with your credentials)
+python3 deploy_ssh.py
+# Script will prompt for: SERVER_IP, USERNAME, PASSWORD
 ```
 
-### 2. Redes Docker Swarm
-```bash
-# Criar redes necessárias
-docker network create --driver=overlay app_network
-docker network create --driver=overlay traefik_public
+**What the script does:**
+- ✅ Creates server directory structure at `/opt/supabase/`
+- ✅ Transfers all configuration files (kong.yml, vector.yml, pooler.exs)
+- ✅ Transfers database migration files
+- ✅ Creates Docker configs automatically
+- ✅ Deploys the Supabase stack
+- ✅ Verifies deployment
 
-# Verificar redes criadas
-docker network ls | grep overlay
+#### 📋 Manual Deployment (Alternative)
+
+👉 **See: `SUPABASE-SERVER-DEPLOYMENT-GUIDE.md`** for detailed manual deployment steps.
+
+```bash
+# Quick manual setup on your server
+sudo mkdir -p /opt/supabase/{config,db-migrations,reference}
+sudo chown -R $(whoami):docker /opt/supabase
+
+# Transfer files from local machine to server
+scp supabase/docker/volumes/api/kong.yml your-user@your-server:/opt/supabase/config/
+scp supabase/docker/volumes/logs/vector.yml your-user@your-server:/opt/supabase/config/
+scp supabase/docker/volumes/pooler/pooler.exs your-user@your-server:/opt/supabase/config/
+
+# Create Docker configs
+docker config create supabase_kong_config /opt/supabase/config/kong.yml
+docker config create supabase_vector_config /opt/supabase/config/vector.yml
+docker config create supabase_pooler_config /opt/supabase/config/pooler.exs
 ```
 
-### 3. Stacks Dependentes
-Verificar que estão rodando via `docker service ls`:
-- ✅ `traefik` (Reverse proxy com SSL automático)
-- ✅ `postgres` (PostgreSQL principal do sistema)
+### 2. Setup External Database (CRITICAL)
 
-### 4. Verificar Portas Disponíveis
-Portas usadas internamente (sem conflitos):
-- PostgreSQL: 5432 (interno)
-- Kong Gateway: 8000 (interno)
-- Auth (GoTrue): 9999 (interno)
-- PostgREST: 3000 (interno)
-- Realtime: 4000 (interno)
-- Storage: 5000 (interno)
-- Studio: 3000 (interno)
-- Analytics: 4000 (interno)
-- ImgProxy: 5001 (interno)
-- Meta API: 8080 (interno)
-- Vector: 9001 (interno)
-- Supavisor: 6543 (interno para pooling)
+**🚨 IMPORTANT**: This step is REQUIRED for Supabase services to work properly.
 
-## 🗄️ Preparação do Banco de Dados
+#### 🚀 Automated Database Setup (Recommended)
 
-### 1. Conectar ao PostgreSQL Principal
+Use the Python database fix script:
+
 ```bash
-# Acessar container PostgreSQL existente
-docker exec -it $(docker ps -q -f "name=postgres") psql -U chatwoot_database -d postgres
+# Execute automated database setup
+chmod +x fix_supabase_db_v2.py
+python3 fix_supabase_db_v2.py
 ```
 
-### 2. Executar Migrações Manuais
-Dentro do PostgreSQL, executar:
+#### 📋 Manual Database Setup
+
+**Connect to your PostgreSQL instance:**
+
+```bash
+# Option 1: Connect directly to PostgreSQL container
+docker exec -it $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwoot_database
+
+# Option 2: From PostgreSQL service
+psql -U chatwoot_database -d chatwoot_database
+```
+
+**Execute these SQL commands:**
 
 ```sql
--- Criar banco para Supabase
-CREATE DATABASE supabase_db;
-GRANT ALL PRIVILEGES ON DATABASE supabase_db TO chatwoot_database;
+  psql -U chatwoot_database -d chatwoot_database
+-- Create required Supabase users
+CREATE USER supabase_auth_admin WITH LOGIN  PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';
+CREATE USER supabase_storage_admin  LOGIN  PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';
+CREATE USER supabase_functions_admin WITH LOGIN  PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';
+CREATE USER authenticator WITH LOGIN  PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';
+CREATE USER pgbouncer  LOGIN  PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';
+CREATE USER supabase_admin WITH LOGIN  PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';
 
--- Conectar ao banco supabase
-\c supabase_db
+-- Grant database permissions
+GRANT ALL PRIVILEGES ON DATABASE chatwoot_database TO supabase_auth_admin;
+GRANT ALL PRIVILEGES ON DATABASE chatwoot_database TO supabase_storage_admin;
+GRANT ALL PRIVILEGES ON DATABASE chatwoot_database TO supabase_functions_admin;
+GRANT ALL PRIVILEGES ON DATABASE chatwoot_database TO authenticator;
+GRANT ALL PRIVILEGES ON DATABASE chatwoot_database TO supabase_admin;
 
--- Instalar extensões necessárias
+-- Create required schemas
+CREATE SCHEMA IF NOT EXISTS _realtime;
+CREATE SCHEMA IF NOT EXISTS _analytics;
+CREATE SCHEMA IF NOT EXISTS storage;
+CREATE SCHEMA IF NOT EXISTS graphql_public;
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+-- Grant schema permissions
+GRANT ALL ON SCHEMA _realtime TO supabase_auth_admin;
+GRANT ALL ON SCHEMA _analytics TO supabase_auth_admin;
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON SCHEMA extensions TO supabase_admin;
+GRANT ALL ON SCHEMA graphql_public TO supabase_admin;
+
+-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS pgjwt;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS http;
+-- Note: pgjwt extension requires manual installation, skip if not available
+-- CREATE EXTENSION IF NOT EXISTS pgjwt;
 
--- Criar schemas obrigatórios
-CREATE SCHEMA IF NOT EXISTS auth;
-CREATE SCHEMA IF NOT EXISTS storage;
-CREATE SCHEMA IF NOT EXISTS realtime;
-CREATE SCHEMA IF NOT EXISTS graphql_public;
-CREATE SCHEMA IF NOT EXISTS extensions;
-CREATE SCHEMA IF NOT EXISTS _analytics;
-CREATE SCHEMA IF NOT EXISTS _realtime;
-
--- Criar usuário supabase_admin
-CREATE ROLE supabase_admin LOGIN SUPERUSER PASSWORD 'Ma1x1x0x_testing';
-
--- Criar roles específicos do Supabase
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE service_role NOLOGIN SUPERUSER;
-CREATE ROLE authenticator LOGIN PASSWORD 'Ma1x1x0x_testing' NOINHERIT;
-CREATE ROLE supabase_auth_admin LOGIN PASSWORD 'Ma1x1x0x_testing';
-CREATE ROLE supabase_storage_admin LOGIN PASSWORD 'Ma1x1x0x_testing';
-
--- Configurar permissões
-GRANT anon TO authenticator;
-GRANT authenticated TO authenticator;
-GRANT service_role TO authenticator;
-
--- Transferir ownership dos schemas
-ALTER SCHEMA auth OWNER TO supabase_admin;
-ALTER SCHEMA storage OWNER TO supabase_admin;
-ALTER SCHEMA realtime OWNER TO supabase_admin;
-ALTER SCHEMA graphql_public OWNER TO supabase_admin;
-ALTER SCHEMA extensions OWNER TO supabase_admin;
-ALTER SCHEMA _analytics OWNER TO supabase_admin;
-ALTER SCHEMA _realtime OWNER TO supabase_admin;
-
--- Criar função para validação JWT
-CREATE OR REPLACE FUNCTION extensions.jwt_decode(token text)
-RETURNS json
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT json_object_agg(key, value)
-  FROM json_each_text(
-    convert_from(
-      decode(
-        translate(
-          split_part(token, '.', 2),
-          '-_', '+/'
-        ) || repeat('=', (4 - length(split_part(token, '.', 2)) % 4) % 4),
-        'base64'
-      ),
-      'utf8'
-    )::json
-  );
-$$;
-
--- Sair do PostgreSQL
-\q
-```
-
-### 3. Verificar Preparação
-```bash
-# Verificar se banco foi criado
-docker exec -it $(docker ps -q -f "name=postgres") psql -U chatwoot_database -l | grep supabase
-```
-
-## 🚀 Deploy da Stack Supabase
-
-### 1. Deploy via Docker Swarm
-```bash
-# Navegar para o diretório da stack
-cd /home/galo/Desktop/stacks_producao
-
-# Deploy da stack Supabase
-docker stack deploy -c supabase.yml supabase
-```
-
-### 2. Monitorar Deploy
-```bash
-# Verificar serviços sendo criados
-docker service ls | grep supabase
-
-# Monitorar logs de inicialização
-docker service logs -f supabase_db
-docker service logs -f supabase_analytics
-docker service logs -f supabase_meta
-```
-
-## 🔍 Monitoramento e Verificação
-
-### 1. Verificar Status dos Serviços
-```bash
-# Listar todos os serviços Supabase
-docker service ls | grep supabase
-
-# Verificar réplicas ativas (devem estar 1/1)
-docker service ps supabase_studio
-docker service ps supabase_kong
-docker service ps supabase_auth
-docker service ps supabase_rest
-docker service ps supabase_realtime
-docker service ps supabase_storage
-docker service ps supabase_meta
-docker service ps supabase_functions
-docker service ps supabase_analytics
-docker service ps supabase_db
-docker service ps supabase_vector
-docker service ps supabase_supavisor
-```
-
-### 2. Ordem de Inicialização Esperada
-Os serviços devem subir nesta ordem:
-1. **Vector** (coleta de logs)
-2. **PostgreSQL** (banco de dados)
-3. **Analytics** (processamento de logs)
-4. **Meta API** (metadados do banco)
-5. **Auth (GoTrue)** (autenticação)
-6. **PostgREST** (API REST)
-7. **ImgProxy** (processamento de imagens)
-8. **Storage** (armazenamento de arquivos)
-9. **Realtime** (websockets)
-10. **Functions** (edge functions)
-11. **Kong** (API gateway)
-12. **Supavisor** (connection pooler)
-13. **Studio** (interface web)
-
-### 3. Verificar Logs de Inicialização
-```bash
-# PostgreSQL deve mostrar:
-docker service logs supabase_db 2>&1 | tail -10
-# Esperado: "database system is ready to accept connections"
-
-# Analytics deve mostrar:
-docker service logs supabase_analytics 2>&1 | tail -10
-# Esperado: sem erros críticos
-
-# Studio deve mostrar:
-docker service logs supabase_studio 2>&1 | tail -10
-# Esperado: "Ready on http://localhost:3000"
-
-# Kong deve mostrar:
-docker service logs supabase_kong 2>&1 | tail -10
-# Esperado: "started"
-```
-
-### 4. Verificar Health Checks
-```bash
-# Verificar status dos containers
-docker service ps supabase_studio --no-trunc
-docker service ps supabase_kong --no-trunc
-docker service ps supabase_db --no-trunc
-
-# Containers devem estar "Running" há mais de 2 minutos
-```
-
-## 🌐 Configuração e Primeiro Acesso
-
-### 1. Acessar Supabase Studio
-- **URL**: `https://studio.senaia.in`
-- **Deve carregar**: Dashboard do Supabase Studio
-- **Login**: Criar uma conta ou usar credenciais configuradas
-
-### 2. Configuração Inicial do Projeto
-No Studio Dashboard:
-
-1. **Database Settings**:
-   - Host: `db` (interno) ou `pooler.senaia.in` (externo)
-   - Port: `5432` (interno) ou `6543` (pooler)
-   - Database: `supabase_db`
-   - Username: `supabase_admin`
-   - Password: `Ma1x1x0x_testing`
-
-2. **API Settings**:
-   - **Project URL**: `https://supabase.senaia.in`
-   - **Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao`
-   - **Service Role Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI`
-
-### 3. Testar APIs via CURL
-```bash
-# Testar REST API
-curl -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao" \
-https://supabase.senaia.in/rest/v1/
-
-# Testar Auth API
-curl https://supabase.senaia.in/auth/v1/settings
-
-# Testar Storage API
-curl -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao" \
-https://supabase.senaia.in/storage/v1/buckets
-
-# Testar Connection Pooler
-psql "postgresql://supabase_admin:Ma1x1x0x_testing@pooler.senaia.in:6543/supabase_db"
-```
-
-## 🔧 Configurações Avançadas
-
-### 1. Configurar Storage Buckets
-Via Supabase Studio:
-```sql
--- Via SQL Editor no Studio
-INSERT INTO storage.buckets (id, name, public) VALUES ('public', 'public', true);
-INSERT INTO storage.buckets (id, name, public) VALUES ('private', 'private', false);
-
--- Configurar policies para bucket público
-CREATE POLICY "Public bucket read access" ON storage.objects
-FOR SELECT USING (bucket_id = 'public');
-
-CREATE POLICY "Public bucket upload access" ON storage.objects
-FOR INSERT WITH CHECK (bucket_id = 'public');
-```
-
-### 2. Configurar Authentication Providers
-Via Studio → Authentication → Settings:
-```json
-{
-  "SITE_URL": "https://supabase.senaia.in",
-  "REDIRECT_URLS": ["https://yourdomain.com/*"],
-  "JWT_EXPIRY": 3600,
-  "DISABLE_SIGNUP": false,
-  "EMAIL_CONFIRM": false
-}
-```
-
-### 3. Configurar Edge Functions
-```bash
-# Criar diretório para functions
-docker exec -it $(docker service ps -q supabase_functions) mkdir -p /home/deno/functions/hello
-
-# Exemplo de function
-cat > hello.ts << 'EOF'
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
-serve(async (req) => {
-  return new Response(
-    JSON.stringify({ message: "Hello from Supabase Edge Functions!" }),
-    { headers: { "Content-Type": "application/json" } }
-  )
-})
-EOF
-```
-
-### 4. Configurar Database com pgvector
-```sql
--- Via Studio SQL Editor ou psql
--- Criar tabela para embeddings
-CREATE TABLE documents (
-  id SERIAL PRIMARY KEY,
-  content TEXT,
-  metadata JSONB,
-  embedding VECTOR(1536),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- Create basic realtime table
+CREATE TABLE IF NOT EXISTS _realtime.schema_migrations (
+    version bigint NOT NULL,
+    inserted_at timestamp(0) without time zone
 );
 
--- Criar índice para busca vetorial
-CREATE INDEX documents_embedding_idx ON documents
-USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-
--- Exemplo de inserção
-INSERT INTO documents (content, embedding) VALUES
-('Exemplo de documento', '[0.1, 0.2, 0.3, ...]');
-
--- Busca por similaridade
-SELECT content, 1 - (embedding <=> '[0.1, 0.2, 0.3, ...]') AS similarity
-FROM documents
-ORDER BY embedding <=> '[0.1, 0.2, 0.3, ...]'
-LIMIT 5;
+SELECT 'Supabase database setup completed successfully!' as result;
 ```
 
-## 📊 Monitoramento em Produção
+**Verify setup:**
 
-### 1. Health Checks Automáticos
-```bash
-# Script para monitorar todos os serviços
-#!/bin/bash
-services=("studio" "kong" "auth" "rest" "realtime" "storage" "meta" "functions" "analytics" "db" "vector" "supavisor")
-
-for service in "${services[@]}"; do
-  status=$(docker service ps "supabase_$service" --format "table {{.CurrentState}}" | grep -c "Running")
-  echo "supabase_$service: $status/1 running"
-done
-```
-
-### 2. Verificar Logs em Tempo Real
-```bash
-# Monitorar logs críticos
-docker service logs -f supabase_db | grep -E "(ERROR|FATAL|PANIC)"
-docker service logs -f supabase_kong | grep -E "(error|ERROR)"
-docker service logs -f supabase_studio | grep -E "(Error|ERROR)"
-```
-
-### 3. Verificar Performance
-```bash
-# CPU e Memory usage
-docker stats --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" | grep supabase
-
-# Verificar conexões PostgreSQL
-docker exec -it $(docker service ps -q supabase_db) psql -U supabase_admin -d supabase_db -c "
-SELECT
-  datname,
-  numbackends,
-  xact_commit,
-  xact_rollback
-FROM pg_stat_database
-WHERE datname = 'supabase_db';"
-```
-
-## 🔒 Segurança e Performance
-
-### 1. Configurações de Segurança
 ```sql
--- Habilitar Row Level Security (RLS)
-ALTER TABLE public.your_table ENABLE ROW LEVEL SECURITY;
+-- Check users exist
+SELECT usename FROM pg_user WHERE usename LIKE 'supabase%';
 
--- Criar policy para usuários autenticados
-CREATE POLICY "Users can only see their own data" ON public.your_table
-FOR ALL USING (auth.uid() = user_id);
-
--- Configurar roles com mínimos privilégios
-GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.your_table TO authenticated;
+-- Check schemas exist
+SELECT schema_name FROM information_schema.schemata
+WHERE schema_name IN ('_realtime', 'storage', 'auth', '_analytics');
 ```
 
-### 2. Rate Limiting (Kong)
-Kong Gateway já inclui rate limiting automático configurado.
+### 3. Initialize Required Volumes
 
-### 3. SSL/TLS
-Traefik gerencia automaticamente certificados Let's Encrypt.
-
-### 4. Backup Strategy
 ```bash
-# Script de backup automatizado
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backups/supabase"
-
-mkdir -p $BACKUP_DIR
-
-# Backup PostgreSQL
-docker exec $(docker service ps -q supabase_db) pg_dump \
-  -U supabase_admin \
-  -d supabase_db \
-  --no-password \
-  --verbose \
-  --clean \
-  --create > "$BACKUP_DIR/supabase_db_$DATE.sql"
-
-# Backup Storage files
-docker run --rm \
-  --volumes-from $(docker service ps -q supabase_storage) \
-  -v $BACKUP_DIR:/backup \
-  alpine tar czf /backup/storage_$DATE.tar.gz /var/lib/storage
-
-echo "Backup completed: $DATE"
+# Create named volumes for persistent data
+docker volume create supabase_storage
+docker volume create supabase_functions
+docker volume create supabase_vector_config
 ```
 
-## ⚠️ Troubleshooting
+## 📋 Environment Variables
 
-### Problemas Comuns
+### Critical Variables to Verify in Production
 
-#### 1. Studio não carrega
+The following environment variables are hardcoded in the current `supabase.yml` but should be updated for production:
+
+**Security Keys (CHANGE THESE):**
 ```bash
-# Verificar se Studio está rodando
-docker service ps supabase_studio
-
-# Verificar logs
-docker service logs supabase_studio 2>&1 | tail -20
-
-# Verificar se Analytics está funcionando (dependência)
-docker service logs supabase_analytics 2>&1 | tail -10
-
-# Testar internamente
-docker exec -it $(docker service ps -q supabase_studio) curl -I http://localhost:3000
+POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!!
+JWT_SECRET=DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+SECRET_KEY_BASE=UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+VAULT_ENC_KEY=DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
 ```
 
-#### 2. API não responde (Kong Gateway)
+**API Keys (CHANGE THESE):**
 ```bash
-# Verificar Kong
-docker service ps supabase_kong
-
-# Verificar configuração Kong
-docker service logs supabase_kong 2>&1 | tail -20
-
-# Verificar se Analytics está rodando (dependência)
-docker service ps supabase_analytics
-
-# Testar Kong internamente
-docker exec -it $(docker service ps -q supabase_kong) curl -I http://localhost:8000/health
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
 ```
 
-#### 3. Database connection error
+**Logflare Keys (CHANGE THESE):**
 ```bash
-# Verificar PostgreSQL
-docker service ps supabase_db
-
-# Verificar logs do banco
-docker service logs supabase_db 2>&1 | tail -20
-
-# Testar conexão
-docker exec -it $(docker service ps -q supabase_db) pg_isready -U supabase_admin -d supabase_db
-
-# Verificar roles e permissões
-docker exec -it $(docker service ps -q supabase_db) psql -U supabase_admin -d supabase_db -c "\du"
+LOGFLARE_PUBLIC_ACCESS_TOKEN=7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+LOGFLARE_PRIVATE_ACCESS_TOKEN=7a5f8b3c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
 ```
 
-#### 4. Authentication não funciona (GoTrue)
+**Domain Configuration:**
 ```bash
-# Verificar GoTrue
-docker service ps supabase_auth
-
-# Verificar logs
-docker service logs supabase_auth 2>&1 | tail -20
-
-# Testar health endpoint
-docker exec -it $(docker service ps -q supabase_auth) wget -qO- http://localhost:9999/health
+# Update these domains to match your setup
+SUPABASE_PUBLIC_URL=https://supabase.senaia.in
+API_EXTERNAL_URL=https://supabase.senaia.in
 ```
 
-#### 5. Realtime não conecta
+## 🚀 Deployment Sequence
+
+### Phase 1: Pre-Deployment (Required)
+
+**1. Run automated deployment:**
 ```bash
-# Verificar Realtime
-docker service ps supabase_realtime
-
-# Verificar logs
-docker service logs supabase_realtime 2>&1 | tail -20
-
-# Verificar se banco está acessível
-docker exec -it $(docker service ps -q supabase_realtime) nc -zv db 5432
+# Complete deployment with Python script
+python3 deploy_ssh.py
 ```
 
-### Comandos de Recovery
-
-#### Restart de Serviço Específico
+**2. Setup database (if not done automatically):**
 ```bash
-# Restart individual
-docker service update --force supabase_studio
-docker service update --force supabase_kong
-docker service update --force supabase_auth
+# Fix database configuration
+python3 fix_supabase_db_v2.py
 ```
 
-#### Restart da Stack Completa
+### Phase 2: Manual Deployment (Alternative)
+
+**1. Deploy services:**
 ```bash
-# Remove stack
-docker stack rm supabase
-
-# Aguardar limpeza completa (30-60 segundos)
-sleep 60
-
-# Verificar se volumes persistem
-docker volume ls | grep supabase
-
-# Re-deploy
+# Deploy Supabase stack
 docker stack deploy -c supabase.yml supabase
+
+# Wait for services to start
+sleep 30
 ```
 
-#### Verificar e Limpar Recursos
+**2. Monitor initial startup:**
 ```bash
-# Listar serviços órfãos
-docker service ls | grep -E "(0/1|0/0)"
+# Check service status
+docker service ls | grep supabase
 
-# Remover serviços órfãos
-docker service rm $(docker service ls -q -f "label=com.docker.stack.namespace=supabase")
-
-# Verificar volumes não utilizados
-docker volume ls | grep supabase
+# Check for errors in key services
+docker service logs supabase_auth
+docker service logs supabase_storage
+docker service logs supabase_realtime
 ```
 
-## 📱 Integração com Aplicações
+### Phase 3: Fix Common Issues
 
-### 1. Client JavaScript/TypeScript
-```typescript
-import { createClient } from '@supabase/supabase-js'
+**If services fail with database authentication errors:**
 
-const supabaseUrl = 'https://supabase.senaia.in'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao'
-
-export const supabase = createClient(supabaseUrl, supabaseKey)
-
-// Exemplo de uso
-const { data, error } = await supabase
-  .from('your_table')
-  .select('*')
-```
-
-### 2. Conexão Externa via Pooler
-```javascript
-// Para aplicações que precisam de conexão direta PostgreSQL
-import { Client } from 'pg'
-
-const client = new Client({
-  host: 'pooler.senaia.in',
-  port: 6543,
-  database: 'supabase_db',
-  user: 'supabase_admin',
-  password: 'Ma1x1x0x_testing',
-  ssl: true // Recomendado para produção
-})
-
-await client.connect()
-```
-
-### 3. Vector/Embeddings para IA
-```javascript
-// Exemplo com OpenAI embeddings
-import OpenAI from 'openai'
-
-const openai = new OpenAI()
-
-// Gerar embedding
-const response = await openai.embeddings.create({
-  model: "text-embedding-ada-002",
-  input: "Seu texto aqui",
-})
-
-const embedding = response.data[0].embedding
-
-// Salvar no Supabase
-const { data, error } = await supabase
-  .from('documents')
-  .insert({
-    content: "Seu texto aqui",
-    embedding: embedding
-  })
-
-// Buscar por similaridade
-const { data: similar } = await supabase
-  .rpc('match_documents', {
-    query_embedding: embedding,
-    similarity_threshold: 0.8,
-    match_count: 5
-  })
-```
-
-### 4. Realtime Subscriptions
-```javascript
-// Subscrever mudanças em tempo real
-const subscription = supabase
-  .channel('public:posts')
-  .on('postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'posts' },
-      payload => {
-        console.log('New post:', payload.new)
-      }
-  )
-  .on('postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'posts' },
-      payload => {
-        console.log('Updated post:', payload.new)
-      }
-  )
-  .subscribe()
-```
-
-## 📝 Checklist Final
-
-### Deploy
-- [ ] Docker Swarm inicializado
-- [ ] Redes `app_network` e `traefik_public` criadas
-- [ ] PostgreSQL principal rodando
-- [ ] Traefik stack ativa
-- [ ] Banco `supabase_db` criado com extensões
-- [ ] Roles e schemas configurados
-- [ ] Stack `supabase` deployada com sucesso
-
-### Verificação de Serviços
-- [ ] `supabase_db` (1/1) - PostgreSQL rodando
-- [ ] `supabase_vector` (1/1) - Log collector ativo
-- [ ] `supabase_analytics` (1/1) - Analytics processando
-- [ ] `supabase_meta` (1/1) - Meta API respondendo
-- [ ] `supabase_auth` (1/1) - GoTrue funcionando
-- [ ] `supabase_rest` (1/1) - PostgREST ativo
-- [ ] `supabase_imgproxy` (1/1) - Image processing ativo
-- [ ] `supabase_storage` (1/1) - Storage API funcionando
-- [ ] `supabase_realtime` (1/1) - Realtime conectando
-- [ ] `supabase_functions` (1/1) - Edge Functions ativas
-- [ ] `supabase_kong` (1/1) - API Gateway roteando
-- [ ] `supabase_supavisor` (1/1) - Connection pooler ativo
-- [ ] `supabase_studio` (1/1) - Dashboard acessível
-
-### Acesso e Funcionalidade
-- [ ] Studio acessível via `https://studio.senaia.in`
-- [ ] APIs REST respondendo via `https://supabase.senaia.in`
-- [ ] Authentication funcionando
-- [ ] Storage buckets configurados
-- [ ] Realtime subscriptions ativas
-- [ ] Connection pooler acessível externamente
-- [ ] SSL certificados válidos (Let's Encrypt)
-- [ ] Logs sem erros críticos
-
-### Segurança
-- [ ] Senhas alteradas dos padrões
-- [ ] RLS habilitado em tabelas públicas
-- [ ] Policies de segurança configuradas
-- [ ] Rate limiting ativo (Kong)
-- [ ] Certificados SSL válidos
-
-### Monitoramento
-- [ ] Health checks funcionando
-- [ ] Logs centralizados via Vector
-- [ ] Analytics coletando métricas
-- [ ] Backup strategy implementada
-- [ ] Alertas configurados
-
-**🎉 Supabase Stack Docker Swarm completa e funcionando em produção!**
-
-## 📞 Suporte e Manutenção
-
-### Logs Centralizados
 ```bash
-# Ver todos os logs Supabase
-docker service logs supabase_analytics | grep -E "(ERROR|WARN|error|warning)"
+# 1. Create missing users and schemas
+POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE USER supabase_auth_admin WITH PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';"
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE SCHEMA IF NOT EXISTS _realtime;"
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE SCHEMA IF NOT EXISTS storage;"
 
-# Monitorar específico
-docker service logs -f supabase_studio
+# 2. Restart affected services
+docker service update --force supabase_auth
+docker service update --force supabase_storage
+docker service update --force supabase_realtime
 ```
 
-### Atualizações
+### Phase 4: Verification
+
 ```bash
-# Atualizar imagem específica
+# Check all services are running
+docker service ps $(docker service ls -q --filter name=supabase)
+
+# Check service health
+docker service ls | grep supabase
+
+# Test key service endpoints
+curl -f http://localhost:9001/health  # Vector
+curl -f http://localhost:4000/health  # Analytics (may take time)
+```
+
+## 🗃️ Volume Management
+
+### Persistent Data Locations
+
+1. **supabase_storage**: `/var/lib/storage` - File uploads and static assets
+2. **supabase_functions**: `/home/deno/functions` - Edge function code
+3. **supabase_vector_config**: `/etc/vector` - Log collection configuration
+
+### Backup Strategy
+
+```bash
+# Backup storage volume
+docker run --rm -v supabase_storage:/source -v $(pwd):/backup alpine tar czf /backup/supabase_storage_$(date +%Y%m%d).tar.gz -C /source .
+
+# Backup functions volume
+docker run --rm -v supabase_functions:/source -v $(pwd):/backup alpine tar czf /backup/supabase_functions_$(date +%Y%m%d).tar.gz -C /source .
+
+# Backup vector config
+docker run --rm -v supabase_vector_config:/source -v $(pwd):/backup alpine tar czf /backup/supabase_vector_$(date +%Y%m%d).tar.gz -C /source .
+```
+
+### Restore Procedure
+
+```bash
+# Restore storage volume
+docker run --rm -v supabase_storage:/target -v $(pwd):/backup alpine tar xzf /backup/supabase_storage_YYYYMMDD.tar.gz -C /target
+
+# Restore functions volume
+docker run --rm -v supabase_functions:/target -v $(pwd):/backup alpine tar xzf /backup/supabase_functions_YYYYMMDD.tar.gz -C /target
+
+# Restore vector config
+docker run --rm -v supabase_vector_config:/target -v $(pwd):/backup alpine tar xzf /backup/supabase_vector_YYYYMMDD.tar.gz -C /target
+```
+
+## 🔄 Database Migrations
+
+### 🚀 Automated Migration (Recommended)
+
+The Python deployment script automatically handles migrations:
+
+```bash
+# Complete migration with automation
+python3 deploy_ssh.py
+# This script:
+# ✅ Transfers all migration files to /opt/supabase/db-migrations/
+# ✅ Creates required database users and schemas
+# ✅ Executes migration scripts
+# ✅ Verifies setup
+```
+
+### 📋 Manual Migration Process
+
+**Required Database Setup Scripts:**
+
+1. **roles.sql** - Creates required database users
+2. **realtime.sql** - Sets up realtime schema
+3. **jwt.sql** - Configures JWT settings
+4. **logs.sql** - Sets up logging schema
+5. **pooler.sql** - Configures connection pooling
+6. **_supabase.sql** - Internal Supabase schemas
+
+**Migration Commands:**
+
+```bash
+# On your server, copy files to PostgreSQL container
+POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
+docker cp /opt/supabase/db-migrations/*.sql $POSTGRES_CONTAINER:/tmp/
+
+# Execute migrations
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -f /tmp/roles.sql
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -f /tmp/realtime.sql
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -f /tmp/jwt.sql
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -f /tmp/logs.sql
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -f /tmp/pooler.sql
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -f /tmp/_supabase.sql
+```
+
+**Alternative - Direct PostgreSQL connection:**
+
+```bash
+# Connect to PostgreSQL and run migrations
+psql -U chatwoot_database -d chatwoot_database
+\i /opt/supabase/db-migrations/roles.sql
+\i /opt/supabase/db-migrations/realtime.sql
+\i /opt/supabase/db-migrations/jwt.sql
+\i /opt/supabase/db-migrations/logs.sql
+\i /opt/supabase/db-migrations/pooler.sql
+\i /opt/supabase/db-migrations/_supabase.sql
+```
+
+### ✅ Migration Verification
+
+```sql
+-- Verify required schemas exist
+SELECT schema_name FROM information_schema.schemata
+WHERE schema_name IN ('_realtime', '_analytics', 'storage', 'graphql_public', 'auth');
+
+-- Verify required users exist
+SELECT usename FROM pg_user
+WHERE usename IN ('authenticator', 'pgbouncer', 'supabase_auth_admin', 'supabase_storage_admin', 'supabase_admin');
+
+-- Verify extensions (pgjwt is optional)
+SELECT extname FROM pg_extension
+WHERE extname IN ('vector', 'pg_stat_statements', 'pgcrypto');
+
+-- Check if pgjwt is available (optional)
+SELECT CASE
+    WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgjwt')
+    THEN 'pgjwt extension is installed'
+    ELSE 'pgjwt extension not available (this is OK for basic functionality)'
+END as pgjwt_status;
+
+-- Test user connections
+-- This should work without errors:
+SELECT current_user;
+```
+
+### 🛠️ Migration Troubleshooting
+
+**If migrations fail:**
+
+```bash
+# Check PostgreSQL container logs
+docker logs $(docker ps -q -f name=postgres)
+
+# Verify file permissions
+ls -la /opt/supabase/db-migrations/
+
+# Test PostgreSQL connectivity
+docker exec $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwoot_database -c "SELECT 1;"
+
+# Re-run specific migration
+docker exec $(docker ps -q -f name=postgres) psql -U chatwoot_database -d chatwoot_database -f /tmp/roles.sql
+```
+
+## 🔧 Configuration Updates for Swarm
+
+### Key Changes from Docker Compose
+
+1. **Removed `depends_on`**: Docker Swarm doesn't support conditional dependencies
+2. **Added external configs**: Kong, Vector, and Pooler configurations
+3. **Updated network labels**: Changed `traefik.swarm.network` to `traefik.docker.network`
+4. **Service discovery**: All internal communications use service names
+5. **Proper hostname templates**: Using `{{.Service.Name}}.{{.Task.Slot}}`
+
+### Health Check Adjustments
+
+- Vector: `http://localhost:9001/health`
+- Analytics: `http://localhost:4000/health`
+- Storage: `http://localhost:5000/status`
+- Auth: `http://localhost:9999/health`
+- Meta: No health check (lightweight service)
+
+## 🚦 Operational Procedures
+
+### Service Management
+
+```bash
+# Scale a service
+docker service scale supabase_studio=2
+
+# Update service image
 docker service update --image supabase/studio:latest supabase_studio
 
-# Atualizar stack completa
+# Rolling restart
+docker service update --force supabase_auth
+
+# View service logs
+docker service logs -f supabase_kong
+
+# Check service status
+docker service ps supabase_storage
+```
+
+### Network Troubleshooting
+
+```bash
+# Test internal connectivity
+docker exec $(docker ps -q -f name=supabase_kong) ping analytics
+docker exec $(docker ps -q -f name=supabase_auth) nslookup postgres
+
+# Check network configuration
+docker network inspect app_network
+docker network inspect traefik_public
+```
+
+### Health Monitoring
+
+```bash
+# Check all service health
+for service in $(docker service ls --format "{{.Name}}" | grep supabase); do
+  echo "=== $service ==="
+  docker service ps $service
+done
+
+# Monitor resource usage
+docker stats $(docker ps -q -f name=supabase)
+```
+
+## 🔒 Security Considerations
+
+### Production Security Checklist
+
+- [ ] Changed all default passwords and keys
+- [ ] Generated new JWT secrets with proper length
+- [ ] Updated domain configurations
+- [ ] Configured proper SMTP settings
+- [ ] Set up SSL certificates via Traefik
+- [ ] Restricted database access to required users only
+- [ ] Enabled proper firewall rules
+- [ ] Configured log rotation and retention
+
+### Network Security
+
+- Services communicate via overlay networks only
+- External access only through Traefik reverse proxy
+- Database connections are internal to the swarm
+- No direct external database exposure
+
+## 🚨 Troubleshooting
+
+### 🔴 Critical Database Authentication Errors
+
+**Error:** `FATAL: password authentication failed for user "supabase_auth_admin"`
+
+**Cause:** Missing Supabase users in PostgreSQL database
+
+**Solution:**
+```bash
+# Quick fix - create missing users
+POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE USER supabase_auth_admin WITH PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';"
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE USER supabase_storage_admin WITH PASSWORD 'Ma1x1x0x!!Ma1x1x0x!!';"
+
+# Restart affected services
+docker service update --force supabase_auth
+docker service update --force supabase_storage
+```
+
+**Automated fix:**
+```bash
+python3 fix_supabase_db_v2.py
+```
+
+### 🔴 Schema Migration Errors
+
+**Error:** `ERROR 3F000 (invalid_schema_name) no schema has been selected to create in`
+
+**Cause:** Missing required schemas (_realtime, storage, auth)
+
+**Solution:**
+```bash
+# Create missing schemas
+POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE SCHEMA IF NOT EXISTS _realtime;"
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE SCHEMA IF NOT EXISTS storage;"
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE SCHEMA IF NOT EXISTS auth;"
+
+# Restart realtime service
+docker service update --force supabase_realtime
+```
+
+### 🔴 Edge Functions Boot Error
+
+**Error:** `worker boot error: failed to bootstrap runtime: could not find an appropriate entrypoint`
+
+**Cause:** Missing function entrypoint configuration
+
+**Solution:**
+```bash
+# Restart functions service
+docker service update --force supabase_functions
+
+# Check if functions volume exists
+docker volume ls | grep functions
+
+# If missing, create volume
+docker volume create supabase_functions
+```
+
+### 🔴 pgjwt Extension Error
+
+**Error:** `extension "pgjwt" is not available`
+
+**Cause:** pgjwt extension not installed in PostgreSQL container
+
+**Quick Fix (Skip pgjwt):**
+```sql
+-- Connect to database and skip pgjwt extension
+psql -U chatwoot_database -d chatwoot_database
+-- Run all other extensions except pgjwt:
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Skip: CREATE EXTENSION IF NOT EXISTS pgjwt;
+```
+
+**Complete Fix (Install pgjwt):**
+```bash
+# Run automated pgjwt fix
+python3 fix_pgjwt_extension.py
+```
+
+**Manual pgjwt Installation:**
+```bash
+# Install in PostgreSQL container
+POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
+docker exec $POSTGRES_CONTAINER apt-get update
+docker exec $POSTGRES_CONTAINER apt-get install -y git build-essential postgresql-server-dev-16
+docker exec $POSTGRES_CONTAINER git clone https://github.com/michelp/pgjwt.git /tmp/pgjwt
+docker exec $POSTGRES_CONTAINER sh -c "cd /tmp/pgjwt && make && make install"
+
+# Try to create extension
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "CREATE EXTENSION IF NOT EXISTS pgjwt;"
+```
+
+**Note:** Supabase can work without pgjwt for basic functionality. JWT operations may be limited.
+
+### 🔧 Common Issues
+
+1. **Kong fails to start**
+   - Verify kong config exists: `docker config ls | grep kong`
+   - Check config syntax: validate kong.yml format
+   - **Fix:** `docker config create supabase_kong_config /opt/supabase/config/kong.yml`
+
+2. **Vector logs errors**
+   - Verify Docker socket access: `/var/run/docker.sock`
+   - Check Logflare connectivity to analytics service
+   - **Fix:** Restart vector service: `docker service update --force supabase_vector`
+
+3. **Storage service fails**
+   - Verify supabase_storage volume exists
+   - Check imgproxy service health
+   - **Fix:** Create volume: `docker volume create supabase_storage`
+
+4. **Auth service connection errors**
+   - Verify PostgreSQL connectivity
+   - Check database users and permissions
+   - **Fix:** Run database setup: `python3 fix_supabase_db_v2.py`
+
+5. **Studio interface not accessible**
+   - Check Traefik labels and routing
+   - Verify meta service is running
+   - **Fix:** `docker service update --force supabase_studio`
+
+### 📊 Service Health Check Commands
+
+```bash
+# Check all Supabase services
+docker service ls | grep supabase
+
+# Check service logs for errors
+docker service logs supabase_auth 2>&1 | grep -i error
+docker service logs supabase_storage 2>&1 | grep -i error
+docker service logs supabase_realtime 2>&1 | grep -i error
+
+# Check database connectivity
+POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "SELECT 1;"
+
+# List database users
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "SELECT usename FROM pg_user;"
+
+# List schemas
+docker exec $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database -c "SELECT schema_name FROM information_schema.schemata;"
+```
+
+### Debug Commands
+
+```bash
+# Check service details
+docker service inspect supabase_kong
+
+# View container logs
+docker logs $(docker ps -q -f name=supabase_auth)
+
+# Test service connectivity
+docker exec -it $(docker ps -q -f name=supabase_studio) wget -O- http://meta:8080
+
+# Validate configurations
+docker config inspect supabase_kong_config
+```
+
+## 📊 Monitoring and Logging
+
+### Log Collection
+
+All services send logs to the analytics service via Vector. Log sources include:
+- Kong: API gateway logs
+- Auth: GoTrue authentication logs
+- Rest: PostgREST API logs
+- Realtime: WebSocket connection logs
+- Storage: File operation logs
+- Functions: Edge function execution logs
+
+### Metrics Access
+
+- Analytics dashboard: `https://studio.senaia.in`
+- Vector health endpoint: `http://vector:9001/health`
+- Individual service logs: `docker service logs -f <service_name>`
+
+## 🔄 Update Procedures
+
+### Rolling Updates
+
+```bash
+# Update specific service
+docker service update --image supabase/studio:latest supabase_studio
+
+# Update all services (use with caution)
 docker stack deploy -c supabase.yml supabase
 ```
 
-### Escalabilidade
+### Configuration Updates
+
 ```bash
-# Escalar serviços conforme necessário
-docker service scale supabase_rest=2
-docker service scale supabase_realtime=2
+# Update external config
+docker config rm supabase_kong_config
+docker config create supabase_kong_config supabase/docker/volumes/api/kong.yml
+
+# Force service restart to use new config
+docker service update --force supabase_kong
 ```
 
-Este manual garante uma instalação completa e funcional do Supabase em Docker Swarm com alta disponibilidade, monitoramento e segurança adequados para ambiente de produção.
+## 🛠️ Deployment Scripts Reference
+
+### Available Python Scripts
+
+1. **`deploy_ssh.py`** - Complete automated deployment
+   ```bash
+   python3 deploy_ssh.py
+   # Handles: file transfer, config creation, stack deployment
+   ```
+
+2. **`fix_supabase_db_v2.py`** - Database setup and error fixes
+   ```bash
+   python3 fix_supabase_db_v2.py
+   # Handles: user creation, schema setup, service restart
+   ```
+
+3. **`simple_db_fix.py`** - Simple database fixes
+   ```bash
+   python3 simple_db_fix.py
+   # Handles: basic user/schema creation
+   ```
+
+4. **`fix_pgjwt_extension.py`** - Fix pgjwt extension issues
+   ```bash
+   python3 fix_pgjwt_extension.py
+   # Handles: pgjwt installation, alternative JWT functions
+   ```
+
+### Manual Deployment Files
+
+- **`MANUAL-DEPLOYMENT-STEPS.md`** - Step-by-step manual instructions
+- **`SUPABASE-ERRORS-ANALYSIS.md`** - Complete error analysis and solutions
+- **`deploy-supabase-server.sh`** - Bash deployment script (requires SSH keys)
+
+## 📚 Additional Resources
+
+- [Supabase Self-Hosting Guide](https://supabase.com/docs/guides/self-hosting)
+- [Docker Swarm Documentation](https://docs.docker.com/engine/swarm/)
+- [Traefik v3 Configuration](https://doc.traefik.io/traefik/)
+- **Local Documentation:**
+  - `SUPABASE-SERVER-DEPLOYMENT-GUIDE.md`
+  - `PORT-CONFLICT-ANALYSIS.md`
+  - `SUPABASE-ERRORS-ANALYSIS.md`
+
+## ⚠️ Important Notes
+
+1. **Database Dependency**: This setup requires an external PostgreSQL database running separately
+2. **Required Database Setup**: Supabase users and schemas MUST be created before services will work
+3. **Persistent Storage**: Ensure volume backups are configured before production deployment
+4. **Security**: All default credentials must be changed for production use
+5. **Monitoring**: Set up proper monitoring and alerting for all services
+6. **SSL**: Traefik handles SSL termination - ensure certificates are properly configured
+7. **Python Scripts**: Use provided Python scripts for reliable deployment automation
+
+## 🎯 Quick Success Checklist
+
+- [ ] PostgreSQL database running and accessible
+- [ ] Database users created (supabase_auth_admin, supabase_storage_admin, etc.)
+- [ ] Required schemas created (_realtime, storage, auth)
+- [ ] Configuration files deployed to `/opt/supabase/config/`
+- [ ] Docker configs created (kong, vector, pooler)
+- [ ] Supabase stack deployed successfully
+- [ ] All services running without authentication errors
+- [ ] External domains accessible through Traefik
+
+---
+
+**Last Updated**: September 2025
+**Version**: 2.0 (Updated with Python scripts and error fixes)
+**Author**: Claude Code Assistant

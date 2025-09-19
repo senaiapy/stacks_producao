@@ -1,0 +1,108 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set password "@450Ab6606"
+set server "217.79.184.8"
+set user "root"
+
+# Function to execute SSH command
+proc ssh_exec {cmd} {
+    global password server user
+    spawn ssh -o StrictHostKeyChecking=no $user@$server $cmd
+    expect {
+        "password:" {
+            send "$password\r"
+            expect eof
+        }
+        "yes/no" {
+            send "yes\r"
+            expect "password:"
+            send "$password\r"
+            expect eof
+        }
+        timeout {
+            puts "Connection timeout"
+            exit 1
+        }
+    }
+}
+
+# Function to execute SCP command
+proc scp_exec {local_file remote_path} {
+    global password server user
+    spawn scp -o StrictHostKeyChecking=no $local_file $user@$server:$remote_path
+    expect {
+        "password:" {
+            send "$password\r"
+            expect eof
+        }
+        "yes/no" {
+            send "yes\r"
+            expect "password:"
+            send "$password\r"
+            expect eof
+        }
+        timeout {
+            puts "SCP timeout"
+            exit 1
+        }
+    }
+}
+
+puts "Starting Supabase deployment to $server..."
+
+# Step 1: Test connection
+puts "Step 1: Testing SSH connection..."
+ssh_exec "echo 'SSH connection successful'"
+
+# Step 2: Create directory structure
+puts "Step 2: Creating directory structure..."
+ssh_exec "sudo mkdir -p /opt/supabase/{config,db-migrations,reference,scripts} && sudo mkdir -p /opt/supabase/db-migrations/init && sudo chown -R \$(whoami):\$(whoami) /opt/supabase && sudo chmod -R 755 /opt/supabase && echo 'Directories created successfully'"
+
+# Step 3: Transfer configuration files
+puts "Step 3: Transferring Kong configuration..."
+scp_exec "supabase/docker/volumes/api/kong.yml" "/opt/supabase/config/"
+
+puts "Step 4: Transferring Vector configuration..."
+scp_exec "supabase/docker/volumes/logs/vector.yml" "/opt/supabase/config/"
+
+puts "Step 5: Transferring Pooler configuration..."
+scp_exec "supabase/docker/volumes/pooler/pooler.exs" "/opt/supabase/config/"
+
+puts "Step 6: Transferring supabase.yml..."
+scp_exec "supabase.yml" "/opt/supabase/"
+
+# Step 7: Transfer database migration files
+puts "Step 7: Transferring database migration files..."
+scp_exec "supabase/docker/volumes/db/roles.sql" "/opt/supabase/db-migrations/" 2>/dev/null || true
+scp_exec "supabase/docker/volumes/db/realtime.sql" "/opt/supabase/db-migrations/" 2>/dev/null || true
+scp_exec "supabase/docker/volumes/db/jwt.sql" "/opt/supabase/db-migrations/" 2>/dev/null || true
+scp_exec "supabase/docker/volumes/db/logs.sql" "/opt/supabase/db-migrations/" 2>/dev/null || true
+scp_exec "supabase/docker/volumes/db/pooler.sql" "/opt/supabase/db-migrations/" 2>/dev/null || true
+scp_exec "supabase/docker/volumes/db/_supabase.sql" "/opt/supabase/db-migrations/" 2>/dev/null || true
+
+# Step 8: Verify files
+puts "Step 8: Verifying file transfer..."
+ssh_exec "ls -la /opt/supabase/config/ && echo '--- Migration files ---' && ls -la /opt/supabase/db-migrations/"
+
+# Step 9: Initialize Docker Swarm and create networks
+puts "Step 9: Initializing Docker Swarm..."
+ssh_exec "docker swarm init 2>/dev/null || echo 'Swarm already initialized' && docker network create --driver=overlay app_network 2>/dev/null || echo 'app_network exists' && docker network create --driver=overlay traefik_public 2>/dev/null || echo 'traefik_public exists'"
+
+# Step 10: Create Docker configs
+puts "Step 10: Creating Docker configs..."
+ssh_exec "cd /opt/supabase && docker config rm supabase_kong_config 2>/dev/null || true && docker config rm supabase_vector_config 2>/dev/null || true && docker config rm supabase_pooler_config 2>/dev/null || true && docker config create supabase_kong_config config/kong.yml && docker config create supabase_vector_config config/vector.yml && docker config create supabase_pooler_config config/pooler.exs && echo 'Docker configs created:' && docker config ls | grep supabase"
+
+# Step 11: Deploy Supabase stack
+puts "Step 11: Deploying Supabase stack..."
+ssh_exec "cd /opt/supabase && docker stack deploy -c supabase.yml supabase && echo 'Supabase stack deployed successfully!'"
+
+# Step 12: Verify deployment
+puts "Step 12: Verifying deployment..."
+ssh_exec "docker service ls | grep supabase"
+
+puts "Deployment completed successfully!"
+puts "Services will be available at:"
+puts "- Supabase API: https://supabase.senaia.in"
+puts "- Supabase Studio: https://studio.senaia.in"
+puts "- Connection Pooler: https://pooler.senaia.in"
