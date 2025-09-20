@@ -1,0 +1,161 @@
+version: "3.8"
+
+networks:
+  traefik_public:
+    external: true
+  app_network:
+    external: true
+
+services:
+  # PostgreSQL Database - Core requirement
+  db:
+    image: postgres:15
+    hostname: db
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+    networks:
+      - app_network
+    volumes:
+      - /mnt/data/supabase/db/data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Ma1x1x0x_testing
+      POSTGRES_DB: postgres
+    command: ["postgres", "-c", "log_min_messages=fatal", "-c", "port=25432"]
+
+  # Supabase Studio - Web UI with Direct Traefik Access
+  studio:
+    image: supabase/studio:latest
+    hostname: studio
+    deploy:
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.studio.rule=Host(`studio.senaia.in`)"
+        - "traefik.http.routers.studio.entrypoints=websecure"
+        - "traefik.http.routers.studio.tls=true"
+        - "traefik.http.routers.studio.tls.certresolver=letsencrypt"
+        - "traefik.http.services.studio.loadbalancer.server.port=3000"
+    networks:
+      - app_network
+      - traefik_public
+    depends_on:
+      - db
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      POSTGRES_PASSWORD: Ma1x1x0x_testing
+      DEFAULT_ORGANIZATION_NAME: SENAIA
+      DEFAULT_PROJECT_NAME: SENAIA_AI
+      SUPABASE_PUBLIC_URL: https://studio.senaia.in
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0NDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+
+  # PostgREST - REST API with Direct Access
+  rest:
+    image: postgrest/postgrest:v12.0.1
+    hostname: rest
+    deploy:
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.api.rule=Host(`api.senaia.in`)"
+        - "traefik.http.routers.api.entrypoints=websecure"
+        - "traefik.http.routers.api.tls=true"
+        - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+        - "traefik.http.services.api.loadbalancer.server.port=3000"
+    networks:
+      - app_network
+      - traefik_public
+    depends_on:
+      - db
+    environment:
+      PGRST_DB_URI: postgres://postgres:Ma1x1x0x_testing@db:25432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+
+  # GoTrue - Auth Service with Direct Access
+  auth:
+    image: supabase/gotrue:v2.151.0
+    hostname: auth
+    deploy:
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.auth.rule=Host(`auth.senaia.in`)"
+        - "traefik.http.routers.auth.entrypoints=websecure"
+        - "traefik.http.routers.auth.tls=true"
+        - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
+        - "traefik.http.services.auth.loadbalancer.server.port=9999"
+    networks:
+      - app_network
+      - traefik_public
+    depends_on:
+      - db
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:Ma1x1x0x_testing@db:25432/postgres
+      GOTRUE_SITE_URL: https://studio.senaia.in
+      GOTRUE_URI_ALLOW_LIST: https://studio.senaia.in,https://api.senaia.in,https://auth.senaia.in
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+
+  # Simple Proxy - Direct Studio access via supabase.senaia.in
+  supabase-proxy:
+    image: nginx:alpine
+    hostname: supabase-proxy
+    deploy:
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.supabase-proxy.rule=Host(`supabase.senaia.in`)"
+        - "traefik.http.routers.supabase-proxy.entrypoints=websecure"
+        - "traefik.http.routers.supabase-proxy.tls=true"
+        - "traefik.http.routers.supabase-proxy.tls.certresolver=letsencrypt"
+        - "traefik.http.services.supabase-proxy.loadbalancer.server.port=80"
+    networks:
+      - app_network
+      - traefik_public
+    depends_on:
+      - studio
+    command: >
+      sh -c "
+      echo 'events { worker_connections 1024; }
+      http {
+        upstream studio_backend { server studio:3000; }
+        server {
+          listen 80;
+          location / {
+            proxy_pass http://studio_backend;
+            proxy_set_header Host \$$host;
+            proxy_set_header X-Real-IP \$$remote_addr;
+            proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$$scheme;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$$http_upgrade;
+            proxy_set_header Connection \"upgrade\";
+          }
+        }
+      }' > /etc/nginx/nginx.conf && nginx -g 'daemon off;'
+      "
