@@ -1,0 +1,183 @@
+# Kong Configuration - DEPRECATED in favor of nginx proxy
+#
+# This Kong configuration is no longer used in the current implementation.
+# Kong has been replaced with a simple nginx proxy for better reliability.
+#
+# Current Implementation:
+# - studio.senaia.in: Direct Traefik access to Studio service
+# - supabase.senaia.in: Nginx proxy routing to Studio service
+# - api.senaia.in: Direct Traefik access to PostgREST service
+# - auth.senaia.in: Direct Traefik access to GoTrue service
+#
+# See supabase.yml "supabase-proxy" service for current routing configuration.
+# This file is kept for reference only.
+
+_format_version: '2.1'
+_transform: true
+
+###
+### Consumers / Users (DEPRECATED)
+###
+consumers:
+  - username: DASHBOARD
+  - username: anon
+    keyauth_credentials:
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+  - username: service_role
+    keyauth_credentials:
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+
+###
+### Access Control List
+###
+acls:
+  - consumer: anon
+    group: anon
+  - consumer: service_role
+    group: admin
+
+###
+### Dashboard credentials
+###
+basicauth_credentials:
+  - consumer: DASHBOARD
+    username: supabase
+    password: Ma1x1x0x_testing
+
+###
+### API Routes
+###
+services:
+  ## GraphQL API
+  - name: graphql
+    url: http://rest:3000/graphql/v1
+    routes:
+      - name: graphql
+        strip_path: true
+        paths:
+          - "/graphql/v1"
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
+  ## REST API
+  - name: rest
+    url: http://rest:3000/
+    routes:
+      - name: rest
+        strip_path: true
+        paths:
+          - "/rest/v1/"
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
+  ## Auth API
+  - name: auth
+    url: http://auth:9999/
+    routes:
+      - name: auth
+        strip_path: true
+        paths:
+          - "/auth/v1/"
+    plugins:
+      - name: cors
+
+  ## Realtime API
+  - name: realtime
+    url: http://realtime:4000/socket/
+    routes:
+      - name: realtime
+        strip_path: true
+        paths:
+          - "/realtime/v1/"
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
+  ## Storage API
+  - name: storage
+    url: http://storage:5000/
+    routes:
+      - name: storage
+        strip_path: true
+        paths:
+          - "/storage/v1/"
+    plugins:
+      - name: cors
+
+  ## Edge Functions API
+  - name: functions
+    url: http://functions:9000/
+    routes:
+      - name: functions
+        strip_path: true
+        paths:
+          - "/functions/v1/"
+    plugins:
+      - name: cors
+
+  ## Analytics / Logflare API
+  - name: analytics
+    url: http://analytics:4000/
+    routes:
+      - name: analytics
+        strip_path: true
+        paths:
+          - "/analytics/v1/"
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+
+  ## Dashboard / Studio
+  - name: dashboard
+    url: http://studio:3000/
+    routes:
+      - name: dashboard
+        strip_path: false
+        paths:
+          - "/"
+    plugins:
+      - name: cors
+      - name: basic-auth
+        config:
+          hide_credentials: true
+
+  ## Health check
+  - name: health
+    url: http://kong:8001/status
+    routes:
+      - name: health
+        paths:
+          - "/health"

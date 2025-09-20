@@ -1,0 +1,1 @@
+ update a SUPABASE_MANUAL.md with all changes and supabase.yml too of this current folder, and create a unic python script to execute all operation of all scriptsin this folder.

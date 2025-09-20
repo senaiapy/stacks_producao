@@ -1,0 +1,57 @@
+
+### CREATE DATABASE STRAPI
+# psql -U postgres
+# CREATE DATABASE strapi;
+
+version: '3.8'
+
+services:
+  strapi:
+    image: strapi/strapi
+    container_name: strapi
+    restart: unless-stopped
+    environment:
+      - DATABASE_CLIENT=postgres #${DATABASE_CLIENT}
+      - DATABASE_HOST=postgres #db
+      - DATABASE_PORT=5432 #${DATABASE_PORT}
+      - DATABASE_NAME=strapi #${DATABASE_NAME}
+      - DATABASE_USERNAME=postgres #${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=Ma1x1x0x!!Ma1x1x0x!! #${DATABASE_PASSWORD}
+      - JWT_SECRET=a8b2c4d6e8f0a1b3c5d7e9f1a3b5c7d9 #${JWT_SECRET}
+      - ADMIN_JWT_SECRET=f9e7d5c3b1a0f8e6d4c2b0a1b3c5d7e9 #${ADMIN_JWT_SECRET}
+      - APP_KEYS=myFirstAppKey123,mySecondAppKey123,myThirdAppKey123 #${APP_KEYS
+      - NODE_ENV=production
+    volumes:
+      - strapi_app:/srv/app
+    ports:
+      - '1337:1337'
+#    depends_on:
+#      - db
+    networks:
+      - strapi_net
+
+#  db:
+#    image: postgres
+#    container_name: strapi-db
+#    restart: unless-stopped
+#    environment:
+#      - POSTGRES_USER=strapi #${DATABASE_USERNAME}
+#      - POSTGRES_PASSWORD=Ma1x1x0x!!Ma1x1x0x!! #${DATABASE_PASSWORD}
+#      - POSTGRES_DB=strapi #${DATABASE_NAME}
+#    volumes:
+#      - ./strapi-db:/var/lib/postgresql/data
+#    ports:
+#      - '5432:45432'
+#    networks:
+#      - strapi_net
+
+volumes:
+  strapi_app:
+    external: true
+    name: strapi_app
+#  strapi_db:
+
+networks:
+  strapi_net: {}
+    # external: true
+    # name: strapi_net

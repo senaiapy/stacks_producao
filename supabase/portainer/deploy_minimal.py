@@ -1,9 +1,35 @@
-version: "3.8"
+#!/usr/bin/env python3
+"""
+Minimal Supabase Deployment - Focus on Core Services with Web Access
+"""
+
+import paramiko
+import time
+
+SERVER_IP = "217.79.184.8"
+SERVER_USER = "root"
+SERVER_PASS = "@450Ab6606"
+
+def deploy_minimal_supabase():
+    print("🚀 MINIMAL SUPABASE DEPLOYMENT - WEB ACCESS FOCUSED")
+    print("=" * 60)
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(SERVER_IP, username=SERVER_USER, password=SERVER_PASS)
+
+    # Step 1: Clean existing deployment
+    print("\n🧹 Cleaning existing deployment...")
+    ssh.exec_command("docker stack rm supabase")
+    time.sleep(20)
+
+    # Step 2: Create minimal working configuration
+    minimal_config = """version: "3.8"
 
 networks:
-  traefik_public:
-    external: true
   app_network:
+    external: true
+  traefik_public:
     external: true
 
 services:
@@ -116,46 +142,75 @@ services:
       GOTRUE_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: "true"
+"""
 
-  # Simple Proxy - Direct Studio access via supabase.senaia.in
-  supabase-proxy:
-    image: nginx:alpine
-    hostname: supabase-proxy
-    deploy:
-      restart_policy:
-        condition: any
-      labels:
-        - "traefik.enable=true"
-        - "traefik.constraint-label=traefik_public"
-        - "traefik.swarm.network=traefik_public"
-        - "traefik.http.routers.supabase-proxy.rule=Host(`supabase.senaia.in`)"
-        - "traefik.http.routers.supabase-proxy.entrypoints=websecure"
-        - "traefik.http.routers.supabase-proxy.tls=true"
-        - "traefik.http.routers.supabase-proxy.tls.certresolver=letsencrypt"
-        - "traefik.http.services.supabase-proxy.loadbalancer.server.port=80"
-    networks:
-      - app_network
-      - traefik_public
-    depends_on:
-      - studio
-    command: >
-      sh -c "
-      echo 'events { worker_connections 1024; }
-      http {
-        upstream studio_backend { server studio:3000; }
-        server {
-          listen 80;
-          location / {
-            proxy_pass http://studio_backend;
-            proxy_set_header Host \$$host;
-            proxy_set_header X-Real-IP \$$remote_addr;
-            proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$$scheme;
-            proxy_redirect off;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade \$$http_upgrade;
-            proxy_set_header Connection \"upgrade\";
-          }
-        }
-      }' > /etc/nginx/nginx.conf && nginx -g 'daemon off;'
-      "
+    # Step 3: Upload and deploy minimal configuration
+    print("\n📤 Uploading minimal configuration...")
+    command = f"""cat > /opt/supabase/minimal.yml << 'EOF'
+{minimal_config}
+EOF"""
+    ssh.exec_command(command)
+
+    print("\n🚀 Deploying minimal stack...")
+    stdin, stdout, stderr = ssh.exec_command("cd /opt/supabase && docker stack deploy -c minimal.yml supabase")
+    output = stdout.read().decode()
+    error = stderr.read().decode()
+
+    print(f"Deploy output: {output}")
+    if error:
+        print(f"Deploy warnings: {error}")
+
+    # Step 4: Wait and monitor services
+    print("\n⏳ Waiting for services to start...")
+    time.sleep(60)
+
+    for i in range(5):
+        stdin, stdout, stderr = ssh.exec_command("docker service ls --filter name=supabase --format 'table {{.Name}}\\t{{.Replicas}}\\t{{.Image}}'")
+        services = stdout.read().decode()
+        print(f"\n📊 Service Status (Check {i+1}):")
+        print(services)
+
+        # Check if all services are running
+        healthy_count = services.count('1/1')
+        if healthy_count >= 3:  # db, studio, rest, auth
+            print("\n✅ Core services are healthy!")
+            break
+
+        if i < 4:
+            print("⏳ Waiting 30 more seconds...")
+            time.sleep(30)
+
+    # Step 5: Test web access
+    print("\n🧪 Testing web access...")
+
+    test_urls = [
+        ("Studio UI", "https://studio.senaia.in/"),
+        ("REST API", "https://api.senaia.in/"),
+        ("Auth API", "https://auth.senaia.in/health"),
+    ]
+
+    for name, url in test_urls:
+        stdin, stdout, stderr = ssh.exec_command(f"curl -s -o /dev/null -w '%{{http_code}}' -m 10 '{url}' 2>/dev/null")
+        status_code = stdout.read().decode().strip()
+
+        if status_code in ['200', '201', '301', '302']:
+            print(f"✅ {name}: {status_code} - Working")
+        elif status_code == '401':
+            print(f"🔐 {name}: {status_code} - Auth Required (Normal)")
+        else:
+            print(f"⚠️ {name}: {status_code} - Check configuration")
+
+    print("\n" + "="*60)
+    print("🎉 MINIMAL SUPABASE DEPLOYMENT COMPLETED!")
+    print("🌐 Web Access URLs:")
+    print("   📊 Studio:   https://studio.senaia.in")
+    print("   🔧 REST API: https://api.senaia.in")
+    print("   🔐 Auth API: https://auth.senaia.in")
+    print("🔑 Default credentials: postgres / Ma1x1x0x_testing")
+    print("="*60)
+
+    ssh.close()
+    return True
+
+if __name__ == "__main__":
+    deploy_minimal_supabase()

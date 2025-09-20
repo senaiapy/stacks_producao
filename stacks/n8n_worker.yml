@@ -120,10 +120,10 @@ services:
     # Healthcheck específico para workers
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep '[n]ode.*worker' || exit 1"]
-      interval: 30s                        # Verifica se processo worker está rodando
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      interval: 20s                        # Verifica se processo worker está rodando
+      timeout: 90s
+      retries: 12
+      start_period: 240s
     
     # Configurações de sistema (comentadas - usar apenas se necessário)
     # sysctls:

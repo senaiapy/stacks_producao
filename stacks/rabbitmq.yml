@@ -1,0 +1,48 @@
+version: "3.7"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+  
+    hostname: rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    networks:
+      - network_public
+    ports:
+      - 5672:5672
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=h8uh8fuh8dfhdfhdfhf
+      - RABBITMQ_DEFAULT_VHOST=default
+      - RABBITMQ_DEFAULT_USER=marcelu.phd@gmail.com 
+      - RABBITMQ_DEFAULT_PASS=@Ma299929
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+          #- node.hostname == worker1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.senaia-bank.in`)
+        - traefik.http.routers.rabbitmq.entrypoints=websecure
+        - traefik.http.routers.rabbitmq.priority=1
+        - traefik.http.routers.rabbitmq.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.rabbitmq.service=rabbitmq
+        - traefik.http.services.rabbitmq.loadbalancer.server.port=15672
+        - traefik.http.services.rabbitmq.loadbalancer.passHostHeader=1
+
+volumes:
+  rabbitmq_data:
+    external: true
+    name: rabbitmq_data
+
+networks:
+  network_public:
+    name: network_public
+    external: true

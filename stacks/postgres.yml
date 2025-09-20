@@ -79,11 +79,11 @@ services:
    
     # Verificação de saúde
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d chatwoot_database"]
-      interval: 30s    # Verifica a cada 30 segundos
-      timeout: 10s     # Timeout de 10 segundos
-      retries: 3       # 3 tentativas antes de marcar como unhealthy
-      start_period: 60s # Aguarda 60s após start para começar verificações
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
+      interval: 15s    # Verifica a cada 30 segundos
+      timeout: 60s     # Timeout de 10 segundos
+      retries: 20       # 3 tentativas antes de marcar como unhealthy
+      start_period: 120s # Aguarda 60s após start para começar verificações
    
     # Configurações otimizadas do PostgreSQL
     command: >

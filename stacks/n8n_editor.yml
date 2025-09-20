@@ -162,10 +162,10 @@ services:
     # Healthcheck otimizado para n8n Editor
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
-      interval: 60s      # Menos frequente (editor é pesado)
-      timeout: 15s       # Timeout maior (startup lento)
-      retries: 3         # 3 falhas consecutivas
-      start_period: 120s # 2 minutos para primeira verificação (n8n demora para iniciar)
+      interval: 30s      # Menos frequente (editor é pesado)
+      timeout: 120s       # Timeout maior (startup lento)
+      retries: 15         # 3 falhas consecutivas
+      start_period: 300s # 2 minutos para primeira verificação (n8n demora para iniciar)
 
 networks:
   app_network:

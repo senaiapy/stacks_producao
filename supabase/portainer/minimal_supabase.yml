@@ -1,0 +1,159 @@
+version: "3.8"
+
+networks:
+  traefik_public:
+    external: true
+  app_network:
+    external: true
+
+services:
+  # PostgreSQL Database - Simplified
+  db:
+    image: postgres:15
+    hostname: db
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+    networks:
+      - app_network
+    volumes:
+      - /mnt/data/supabase/db/data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Ma1x1x0x_testing
+      POSTGRES_DB: postgres
+    command: ["postgres", "-c", "log_min_messages=fatal", "-c", "port=25432"]
+
+  # Supabase Studio - Direct with minimal deps
+  studio:
+    image: supabase/studio:20250224-d10db0f
+    hostname: studio
+    deploy:
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.studio.rule=Host(`studio.senaia.in`)"
+        - "traefik.http.routers.studio.entrypoints=websecure"
+        - "traefik.http.routers.studio.tls=true"
+        - "traefik.http.routers.studio.tls.certresolver=letsencrypt"
+        - "traefik.http.services.studio.loadbalancer.server.port=3000"
+    networks:
+      - app_network
+      - traefik_public
+    depends_on:
+      - db
+    environment:
+      STUDIO_PG_META_URL: http://meta:8081
+      POSTGRES_PASSWORD: Ma1x1x0x_testing
+      DEFAULT_ORGANIZATION_NAME: SENAIA
+      DEFAULT_PROJECT_NAME: SENAIA_AI
+      SUPABASE_URL: http://kong:7000
+      SUPABASE_PUBLIC_URL: https://supabase.senaia.in
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      AUTH_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+
+  # Meta API for Studio
+  meta:
+    image: supabase/postgres-meta:v0.86.1
+    hostname: meta
+    deploy:
+      restart_policy:
+        condition: any
+    networks:
+      - app_network
+    depends_on:
+      - db
+    environment:
+      PG_META_PORT: 8081
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 25432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: Ma1x1x0x_testing
+
+  # REST API
+  rest:
+    image: postgrest/postgrest:v12.2.8
+    hostname: rest
+    deploy:
+      restart_policy:
+        condition: any
+    networks:
+      - app_network
+    depends_on:
+      - db
+    environment:
+      PGRST_DB_URI: postgres://postgres:Ma1x1x0x_testing@db:25432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+
+  # Auth Service
+  auth:
+    image: supabase/gotrue:v2.170.0
+    hostname: auth
+    deploy:
+      restart_policy:
+        condition: any
+    networks:
+      - app_network
+    depends_on:
+      - db
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:Ma1x1x0x_testing@db:25432/postgres
+      GOTRUE_SITE_URL: https://studio.senaia.in
+      GOTRUE_URI_ALLOW_LIST: https://studio.senaia.in,https://supabase.senaia.in
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_SECRET: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+
+  # Kong Gateway
+  kong:
+    image: kong:2.8.1
+    hostname: kong
+    deploy:
+      restart_policy:
+        condition: any
+      placement:
+        constraints: [node.labels.node-type == primary]
+      labels:
+        - "traefik.enable=true"
+        - "traefik.constraint-label=traefik_public"
+        - "traefik.swarm.network=traefik_public"
+        - "traefik.http.routers.kong.rule=Host(`supabase.senaia.in`)"
+        - "traefik.http.routers.kong.entrypoints=websecure"
+        - "traefik.http.routers.kong.tls=true"
+        - "traefik.http.routers.kong.tls.certresolver=letsencrypt"
+        - "traefik.http.services.kong.loadbalancer.server.port=7000"
+    networks:
+      - app_network
+      - traefik_public
+    volumes:
+      - /mnt/data/supabase/api/kong.yml:/home/kong/temp.yml:ro
+    depends_on:
+      - auth
+      - rest
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_PROXY_LISTEN: "0.0.0.0:7000"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU2ODY4NDAwLCJleHAiOjE5MTQ2MzQ4MDB9.92l2hcU3eK2GZCkzkLujEpl45fXqCN_p3Ad9qsxijao
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTY4Njg0MDAsImV4cCI6MTkxNDYzNDgwMH0.bZ8_RsHDV_LMWXfjKbaVtC1mX4DWcrMT6iqP6EHovnI
+      DASHBOARD_USERNAME: supabase
+      DASHBOARD_PASSWORD: Ma1x1x0x_testing
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'

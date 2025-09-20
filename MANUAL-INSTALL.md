@@ -56,7 +56,6 @@ docker swarm init
 docker network create --driver=overlay network_public
 docker network create --driver=overlay traefik_baileys_public
 docker network create --driver=overlay app_baileys_network
-docker network create --driver=overlay supabase-net
 ```
 
 ## 🔧 3. Configuração dos Serviços

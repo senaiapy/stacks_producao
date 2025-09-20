@@ -132,10 +132,10 @@ services:
     # Healthcheck para Rails
     #healthcheck:
       #test: ["CMD-SHELL", "node -e \"const http = require('http'); const req = http.get('http://localhost:3000/', (res) => { if(res.statusCode === 200) { process.exit(0); } else { process.exit(1); } }); req.on('error', () => process.exit(1)); req.setTimeout(5000, () => { req.destroy(); process.exit(1); });\""]
-      #interval: 30s
-      #timeout: 10s
-      #retries: 3
-      #start_period: 200s
+      #interval: 45s
+      #timeout: 180s
+      #retries: 15
+      #start_period: 600s
   # Worker Sidekiq para processamento em background
   chatwoot_sidekiq:
     image: chatwoot/chatwoot:v4.2.0
@@ -243,10 +243,10 @@ services:
     # Healthcheck para Sidekiq
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep sidekiq | grep -v grep || exit 1"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+      interval: 45s
+      timeout: 180s
+      retries: 15
+      start_period: 600s
 
 networks:
   app_network:

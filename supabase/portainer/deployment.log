@@ -1,0 +1,56 @@
+🔧 FULL-INSTALL-SUPABASE.py starting...
+📁 Checking for supabase.yml...
+✅ supabase.yml found
+🚀 Creating installer...
+✅ Installer created
+🔄 Starting installation...
+
+================================================================================
+🚀 SUPABASE FULL INSTALLATION STARTING
+================================================================================
+🎯 Target Server: 217.79.184.8
+👤 User: root
+📁 Local Directory: /home/galo/Desktop/stacks_producao/supabase/portainer
+
+🔄 Executing Step 1/12: Check Prerequisites
+
+📋 STEP 1: CHECK PREREQUISITES
+------------------------------------------------------------
+✅ Required local files found
+✅ SSH connection established to 217.79.184.8
+✅ Docker Swarm is active
+
+🔄 Executing Step 2/12: Prepare Server Environment
+
+📋 STEP 2: PREPARE SERVER ENVIRONMENT
+------------------------------------------------------------
+📁 Creating server directories...
+  ✅ /opt/supabase
+  ✅ /mnt/data/supabase
+  ✅ /mnt/data/supabase/api
+  ✅ /mnt/data/supabase/storage
+  ✅ /mnt/data/supabase/db
+  ✅ /mnt/data/supabase/db/data
+  ✅ /mnt/data/supabase/db/init
+  ✅ /mnt/data/supabase/functions
+  ✅ /mnt/data/supabase/logs
+🔐 Setting PostgreSQL permissions...
+🌐 Setting up Docker networks...
+  ✅ app_network exists
+  ✅ traefik_public exists
+🏷️ Setting node labels...
+✅ Server environment prepared
+
+🔄 Executing Step 3/12: Upload Configuration Files
+
+📋 STEP 3: UPLOAD CONFIGURATION FILES
+------------------------------------------------------------
+📤 Uploading supabase.yml...
+📤 Uploading volumes directory...
+  📁 api/kong.yml
+  📁 pooler/pooler.exs
+  📁 logs/vector.yml
+  📁 db/webhooks.sql
+  📁 db/roles.sql
+  📁 db/realtime.sql
+  📁 db/pooler.sql
