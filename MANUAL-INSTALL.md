@@ -6,7 +6,17 @@ Este manual contém todos os procedimentos e credenciais para instalação compl
 
 ## 🚀 1. Preparação do Sistema
 
-### 1.1 Configuração de Fuso Horário
+
+> ⚠️ **IMPORTANTE**: NÃO instale NGINX ou outros apps no aaPanel
+
+### 1.1 Atualização do Sistema
+```bash
+sudo apt-get update && apt-get upgrade -y 
+
+sudo apt-get install  zip unzip curl git apt-transport-https net-tools libcurl4-openssl-dev nmon htop ufw locales  nmap zsh nodejs npm ca-certificates  systemd-timesyncd   software-properties-common libxslt1-dev libcurl4 libgeoip-dev  apparmor-utils sshpass -y
+
+```
+### 1.2 Configuração de Fuso Horário
 ```bash
 # Brasil
 sudo timedatectl set-timezone America/Sao_Paulo
@@ -15,34 +25,35 @@ sudo timedatectl set-timezone America/Sao_Paulo
 sudo timedatectl set-timezone America/Asuncion
 ```
 
-### 1.2 Instalação do aaPanel (Opcional)
+### 1.3 Configuração do Hostname
 ```bash
-URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
-```
-> ⚠️ **IMPORTANTE**: NÃO instale NGINX ou outros apps no aaPanel
-
-### 1.3 Atualização do Sistema
-```bash
-sudo apt-get update && apt-get install -y apparmor-utils
-sudo apt update && sudo apt install -y sshpass
-```
-
-### 1.4 Configuração do Hostname
-```bash
-# Definir nome do servidor (substitua 'manager1' pelo nome desejado)
-hostnamectl set-hostname manager1
+# Definir nome do servidor (substitua 'paraguays' pelo nome desejado)
+hostnamectl set-hostname paraguays
 
 # Editar arquivo hosts
 nano /etc/hosts
-# Alterar linha: 127.0.0.1 manager1
+# Alterar linha: 127.0.0.1 paraguays se houver referncias tb
+
+systemctl reboot
 ```
 
-## 🐳 2. Instalação do Docker
+### 1.4 Instalação do aaPanel (Opcional)
+```bash
+URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
+```
+
+### 2 Configurar Orion Auto Install(opcional)
+
+bash <(curl -sSL setup.oriondesign.art.br)
+
+## 🐳 2.0 Instalação do Docker
 
 ### 2.1 Instalar Docker
 ```bash
 curl -fsSL https://get.docker.com | bash
 ```
+
+
 
 ### 2.2 Configurar Docker Swarm
 ```bash
