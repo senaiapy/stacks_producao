@@ -37,6 +37,9 @@ docker swarm init --advertise-addr=YOUR_IP_HERE
 docker network create --driver=overlay traefik_public
 docker network create --driver=overlay app_network
 docker network create --driver=overlay network_public
+docker network create --driver=overlay traefik_baileys_public
+docker network create --driver=overlay app_baileys_network
+docker network create --driver=overlay supabase-net
 
 # List all services
 docker service ls
@@ -46,6 +49,12 @@ docker service logs -f SERVICE_NAME
 
 # Update/restart a service
 docker service update --force SERVICE_NAME
+
+# Remove a stack
+docker stack rm STACK_NAME
+
+# Deploy stack with options
+docker stack deploy --prune --resolve-image always -c STACK_FILE.yml STACK_NAME
 ```
 
 ### Stack Deployment Order
@@ -69,6 +78,13 @@ docker stack deploy -c n8n_mcp.yml n8n-mcp
 docker stack deploy -c evolution.yml evolution
 
 # 5. Chatwoot (requires migration first - see below)
+# 6. Optional services
+docker stack deploy -c calendar.yml calendar
+docker stack deploy -c strapi.yml strapi
+docker stack deploy -c supabase.yml supabase
+docker stack deploy -c pgadmin.yml pgadmin
+docker stack deploy -c rabbitmq.yml rabbitmq
+docker stack deploy -c nproxy.yml nginx-proxy
 ```
 
 ### Chatwoot Migration (Required Before Deployment)
@@ -108,12 +124,20 @@ docker exec -it POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_databas
 CREATE DATABASE n8n_database;
 CREATE DATABASE evolution_database;
 CREATE DATABASE chatwoot_db;
+CREATE DATABASE chatwoot_baileys_db;
+CREATE DATABASE supabase_db;
 
-# Enable pgvector extension
+# Enable pgvector extension (for AI features)
 CREATE EXTENSION IF NOT EXISTS vector;
+
+# List all databases
+\l
 
 # Test Redis connection
 docker exec -it REDIS_CONTAINER redis-cli ping
+
+# Test PostgreSQL connection
+psql -U chatwoot_database -d chatwoot_database -c "SELECT 1"
 ```
 
 ### Security Key Generation
@@ -139,6 +163,17 @@ openssl rand -base64 32
 **N8N**: Update N8N_ENCRYPTION_KEY in all N8N service files
 **Evolution API**: Update AUTHENTICATION_API_KEY in `evolution.yml`
 
+### N8N Plugin Installation
+After N8N deployment, install required plugins via Settings > Plugins:
+- `n8n-nodes-evolution-api`
+- `@devlikeapro/n8n-nodes-chatwoot`
+
+### MinIO Bucket Creation
+After MinIO deployment, create required buckets via web console:
+- `evolution` - for Evolution API file storage
+- `chatwoot` - for Chatwoot attachments
+- Additional buckets as needed for other services
+
 ### Domain Configuration
 
 All services are configured with `senaia.in` domains. Update these in the respective YAML files:
@@ -147,17 +182,38 @@ All services are configured with `senaia.in` domains. Update these in the respec
 - N8N: `editor.seudominio.com` / `workflow.seudominio.com`
 - Chatwoot: `chat.seudominio.com`
 - Evolution: `evo.seudominio.com`
+- Calendar: `agenda.seudominio.com`
+- Strapi: `strapi.seudominio.com`
+- Supabase: `supabase.seudominio.com`
+- PGAdmin: `pgadmin.seudominio.com`
+- RabbitMQ: `rabbitmq.seudominio.com`
 
 ## Port Usage
 
-- PostgreSQL: 5432 (internal)
-- Redis: 6379 (internal)
-- MinIO: 9000 (internal)
-- N8N: 5678 (internal)
-- Chatwoot: 3030 (internal)
-- Evolution: 8080 (internal)
+### Internal Ports (Container Only)
+- PostgreSQL: 5432 or 25432 (depending on configuration)
+- Redis: 6379
+- MinIO: 9000 (API), 9001 (Console)
+- N8N: 5678
+- Chatwoot: 3030
+- Evolution: 8080
+- Supabase: 8000 (API), 3032 (Studio)
+- RabbitMQ: 5672 (AMQP), 15672 (Management)
+- Strapi: 1337
+- Calendar: 3000
+
+### External Ports (Host Exposed)
+- Traefik: 80 (HTTP), 443 (HTTPS), 8888 (Dashboard)
 - Portainer: 9000, 9001, 9443
-- Traefik: 8888, 8443
+- RabbitMQ: 5672 (AMQP)
+- Calendar: 6000 (mapped to internal 3000)
+- Nginx Proxy Manager: 8181
+
+### Port Conflict Notes
+- Evolution API uses port 8080 internally only (no host exposure)
+- Port 8443 is available for future services
+- PostgreSQL may use custom port 25432 to avoid system conflicts
+- All web services use Traefik reverse proxy for external access
 
 ## Troubleshooting
 
@@ -177,10 +233,20 @@ docker stats
 ```
 
 ### Common Issues
-- **SSL certificates**: Check Traefik logs and verify DNS records
+- **SSL certificates**: Check Traefik logs and verify DNS records using dnschecker
 - **Database connections**: Verify network connectivity and credentials
 - **Service startup**: Check placement constraints and resource limits
-- **Storage**: Ensure MinIO directories exist with proper permissions
+- **Storage**: Ensure MinIO directories exist with proper permissions (`mkdir -p /var/data/minio`)
+- **N8N plugins**: Install required plugins manually after deployment
+- **Chatwoot migration**: Always run migration before deploying Chatwoot stack
+- **Domain resolution**: Verify DNS propagation before deployment to avoid Let's Encrypt blocks
+
+### Pre-deployment Checklist
+1. Verify DNS records are propagated (use dnschecker.org)
+2. Create required directories: `/var/data/minio`, `/var/data/npm`
+3. Update all domain names in YAML files
+4. Change default passwords and encryption keys
+5. Ensure Docker Swarm networks are created
 
 ## Development Workflow
 
@@ -191,10 +257,28 @@ docker stats
 
 ## File Structure
 
-- `*.yml`: Docker Compose/Swarm stack files
-- `README.md`: Comprehensive installation and deployment guide
-- `DOC/COMANDOS-INSTALL.TXT`: Detailed installation commands and credentials
+### Stack Files (`/stacks/`)
+- `*.yml`: Docker Compose/Swarm stack files (29 total)
+- Core stacks: `traefik.yml`, `postgres.yml`, `redis.yml`, `minio.yml`
+- Application stacks: `n8n_*.yml`, `chatwoot.yml`, `evolution.yml`
+- Optional stacks: `calendar.yml`, `strapi.yml`, `supabase.yml`, `pgadmin.yml`
+
+### Documentation
+- `README.md`: Comprehensive installation and deployment guide (Portuguese)
+- `MANUAL-INSTALL.md`: Detailed manual with credentials and step-by-step instructions
+- `PORTS-COMPATIBILITY.md`: Port usage analysis and conflict resolution
+- `DOC/COMANDOS-INSTALL copy.md`: Installation commands and credentials reference
 - `.vscode/settings.json`: VS Code configuration
+
+### Alternative Configurations
+- `/orion/`: Alternative stack configurations (ORION deployment)
+- `/docker-local/`: Local development configurations
+- `/supabase/`: Supabase-specific configurations
+- `/manuals/`: Additional documentation and guides
+
+### Environment Files
+- `.env`: Environment variables and configuration
+- `.gitignore`: Git ignore patterns
 
 ## Security Notes
 
