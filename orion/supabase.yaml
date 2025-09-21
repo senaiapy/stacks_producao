@@ -1,0 +1,536 @@
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  studio:
+    image: supabase/studio:2025.06.30-sha-6f5982d ## Versão do Supabase Studio
+
+    networks:
+      - traefik_public ## Nome da rede interna
+    
+    environment:
+    ## Definindo o Hostname
+      - HOSTNAME=0.0.0.0
+
+    ## Configurações de Logs
+      - DEBUG=next:*
+      - NEXT_PUBLIC_ENABLE_LOGS=true
+      - NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
+
+    ## Configuração de Branding
+      - DEFAULT_ORGANIZATION_NAME=OrionDesign
+      - DEFAULT_PROJECT_NAME=SetupOrion
+
+    ## Configuração do Banco de Dados PostgreSQL
+      - POSTGRES_PASSWORD=faa77387489e42266f6a25159a01999d
+      - STUDIO_PG_META_URL=http://meta:8080
+
+    ## Configuração do Supabase
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_PUBLIC_URL=https://supabase.b7g.app
+
+    ## Integração com Logflare
+      - LOGFLARE_API_KEY=90b9b3ed554daf369a5c7d1963c2e175
+      - LOGFLARE_URL=http://analytics:4000
+      - LOGFLARE_PRIVATE_ACCESS_TOKEN=90b9b3ed554daf369a5c7d1963c2e175
+
+    ## Configurações de Autenticação
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.YzuGn8vFqjSwMo-2D6shtp938A7TQQT0fQQ13nR5xZo
+      - SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MTUwNTA4MDAsCiAgImV4cCI6IDE4NzI4MTcyMDAKfQ.rxvJzNORPYE55TD2UMQlukX4SUxzUE6EtpRa4KU7gAY
+      - AUTH_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+
+    ## Configuração do OpenAI (opcional)
+      # - OPENAI_API_KEY=
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  kong:
+    image: kong:2.8.1 ## Versão do Supabase Kong
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+
+    volumes:
+       - /root/supabase/docker/volumes/api/kong.yml:/home/kong/temp.yml:ro
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração de usuário e senha do Dashboard
+      - DASHBOARD_USERNAME=supabase
+      - DASHBOARD_PASSWORD=Ma1x1x0x_testing
+
+    ## Configurações de Autenticação
+      - JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.YzuGn8vFqjSwMo-2D6shtp938A7TQQT0fQQ13nR5xZo
+      - SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MTUwNTA4MDAsCiAgImV4cCI6IDE4NzI4MTcyMDAKfQ.rxvJzNORPYE55TD2UMQlukX4SUxzUE6EtpRa4KU7gAY
+
+    ## Configuração do Banco de Dados
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/home/kong/kong.yml
+
+    ## Configuração de DNS
+      - KONG_DNS_ORDER=LAST,A,CNAME
+
+    ## Configuração de Plugins
+      - KONG_PLUGINS=request-transformer,cors,key-auth,acl,basic-auth
+
+    ## Configurações de Buffers do NGINX
+      - KONG_NGINX_PROXY_PROXY_BUFFER_SIZE=160k
+      - KONG_NGINX_PROXY_PROXY_BUFFERS=64 160k
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager  
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.kong.rule=Host(`supabase.b7g.app`) && PathPrefix(`/`) ## Url do Supabase
+        - traefik.http.services.kong.loadbalancer.server.port=8000
+        - traefik.http.routers.kong.service=kong
+        - traefik.http.routers.kong.entrypoints=websecure
+        - traefik.http.routers.kong.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.kong.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+  auth:
+    image: supabase/gotrue:v2.176.1 ## Versão do Supabase Auth
+    
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração Geral da API Auth
+      - GOTRUE_API_HOST=0.0.0.0
+      - GOTRUE_API_PORT=9999
+      - API_EXTERNAL_URL=https://supabase.b7g.app
+
+    ## Configuração do Banco de Dados
+      - GOTRUE_DB_DRIVER=postgres
+      - GOTRUE_DB_DATABASE_URL=postgres://supabase_auth_admin:faa77387489e42266f6a25159a01999d@db:5432/postgres ## Troque a senha do postgres
+
+    ## Configurações de URL e Permissões
+      - GOTRUE_SITE_URL=https://supabase.b7g.app
+      - GOTRUE_URI_ALLOW_LIST=
+      - GOTRUE_DISABLE_SIGNUP=false
+
+    ## Configurações de JWT
+      - GOTRUE_JWT_ADMIN_ROLES=service_role
+      - GOTRUE_JWT_AUD=authenticated
+      - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
+      - GOTRUE_JWT_EXP=31536000
+      - GOTRUE_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+
+    ## Configuração de Email
+      - GOTRUE_EXTERNAL_EMAIL_ENABLED=false
+      - GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=false
+      #- GOTRUE_MAILER_AUTOCONFIRM=true # Envia emails automaticamente para confirmar cadastros
+      #- GOTRUE_SMTP_ADMIN_EMAIL=email@dominio.com # Email administrador SMTP
+      #- GOTRUE_SMTP_HOST=smtp.dominio.com # Host SMTP
+      #- GOTRUE_SMTP_PORT=587 # Porta SMTP
+      #- GOTRUE_SMTP_USER=email@dominio.com # Usuário SMTP
+      #- GOTRUE_SMTP_PASS=senha # Senha SMTP
+      #- GOTRUE_SMTP_SENDER_NAME=email@dominio.com # Nome do remetente SMTP
+
+    ## Configurações de URL para Emails
+      - GOTRUE_MAILER_URLPATHS_INVITE=/auth/v1/verify
+      - GOTRUE_MAILER_URLPATHS_CONFIRMATION=/auth/v1/verify
+      - GOTRUE_MAILER_URLPATHS_RECOVERY=/auth/v1/verify
+      - GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE=/auth/v1/verify
+
+    ## Configurações de SMS
+      - GOTRUE_EXTERNAL_PHONE_ENABLED=false
+      - GOTRUE_SMS_AUTOCONFIRM=false
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  rest:
+    image: postgrest/postgrest:v12.2.12 ## Versão do Supabase Rest
+    command: "postgrest"
+    
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração do Banco de Dados
+      - PGRST_DB_URI=postgres://authenticator:faa77387489e42266f6a25159a01999d@db:5432/postgres
+      - PGRST_DB_SCHEMAS=public,storage,graphql_public
+      - PGRST_DB_ANON_ROLE=anon
+
+    ## Configurações de JWT (JSON Web Tokens)
+      - PGRST_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - PGRST_APP_SETTINGS_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - PGRST_APP_SETTINGS_JWT_EXP=31536000
+
+    ## Outras Configurações
+      - PGRST_DB_USE_LEGACY_GUCS="false"
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  realtime:
+    image: supabase/realtime:v2.34.47 ## Versão do Supabase Realtime
+
+    networks:
+      - traefik_public ## Nome da rede interna
+    
+    environment:
+    ## Configuração da API Realtime
+      - PORT=4000
+      - API_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - SECRET_KEY_BASE=cf96beba9fc224339857257718b610d1280d2aa519b6cecd3a8a7de2c002f7d7
+      - APP_NAME=realtime
+
+    ## Configuração do Banco de Dados
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=supabase_admin
+      - DB_PASSWORD=faa77387489e42266f6a25159a01999d
+      - DB_NAME=postgres
+      - DB_AFTER_CONNECT_QUERY='SET search_path TO _realtime'
+      - DB_ENC_KEY=supabaserealtime
+
+    ## Configuração de Conexão e Rede
+      - ERL_AFLAGS=-proto_dist inet_tcp
+      - DNS_NODES="''"
+      - RLIMIT_NOFILE=10000
+
+    ## Configuração do Ambiente
+      - SEED_SELF_HOST=true
+      - RUN_JANITOR=true
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  storage:
+    image: supabase/storage-api:v1.22.17 ## Versão do Supabase Storage
+
+    volumes:
+      - /root/supabase/docker/volumes/storage:/var/lib/storage:z
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração do PostgREST e JWT
+      - ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.YzuGn8vFqjSwMo-2D6shtp938A7TQQT0fQQ13nR5xZo
+      - SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MTUwNTA4MDAsCiAgImV4cCI6IDE4NzI4MTcyMDAKfQ.rxvJzNORPYE55TD2UMQlukX4SUxzUE6EtpRa4KU7gAY
+      - POSTGREST_URL=http://rest:3000
+      - PGRST_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - DATABASE_URL=postgres://supabase_storage_admin:faa77387489e42266f6a25159a01999d@db:5432/postgres
+
+    ## Configuração de Armazenamento de Arquivos MinIO
+      - FILE_SIZE_LIMIT=52428800
+      - STORAGE_BACKEND=s3
+      - GLOBAL_S3_BUCKET=supabase ## Nome da bucket do MinIO
+      - GLOBAL_S3_ENDPOINT=https://storage.b7g.app ## URL S3 do MinIO
+      - GLOBAL_S3_PROTOCOL=https
+      - GLOBAL_S3_FORCE_PATH_STYLE=true
+      - AWS_ACCESS_KEY_ID= ## Access Key
+      - AWS_SECRET_ACCESS_KEY= ## Secret Key
+      - AWS_DEFAULT_REGION=eu-south ## Região MinIO
+      - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
+
+    ## Configuração de Imagens
+      - ENABLE_IMAGE_TRANSFORMATION="true"
+      - IMGPROXY_URL=http://imgproxy:5001
+
+    ## Configuração de Identificação e Região
+      - TENANT_ID=stub
+      - REGION=eu-south ## Região
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  imgproxy:
+    image: darthsim/imgproxy:v3.8.0 ## Versão do Supabase Imgproxy
+  
+    volumes:
+      - /root/supabase/docker/volumes/storage:/var/lib/storage:z
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração do IMGPROXY
+      - IMGPROXY_BIND=:5001
+      - IMGPROXY_LOCAL_FILESYSTEM_ROOT=/
+      - IMGPROXY_USE_ETAG=true
+      - IMGPROXY_ENABLE_WEBP_DETECTION=true
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  meta:
+    image: supabase/postgres-meta:v0.89.3 ## Versão do Meta 
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração do PG_META
+      - PG_META_PORT=8080
+      - PG_META_DB_HOST=db
+      - PG_META_DB_PORT=5432
+      - PG_META_DB_NAME=postgres
+      - PG_META_DB_USER=supabase_admin
+      - PG_META_DB_PASSWORD=faa77387489e42266f6a25159a01999d
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  functions:
+    image: supabase/edge-runtime:v1.67.4 ## Versão do Supabase Functions
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+    
+    volumes:
+      - /root/supabase/docker/volumes/functions:/home/deno/functions:Z
+
+    networks:
+      - traefik_public ## Nome da rede interna
+   
+    environment:
+    ## Configuração de JWT e Supabase
+      - VERIFY_JWT="false"
+      - JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.YzuGn8vFqjSwMo-2D6shtp938A7TQQT0fQQ13nR5xZo
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MTUwNTA4MDAsCiAgImV4cCI6IDE4NzI4MTcyMDAKfQ.rxvJzNORPYE55TD2UMQlukX4SUxzUE6EtpRa4KU7gAY
+      - SUPABASE_DB_URL=postgresql://postgres:faa77387489e42266f6a25159a01999d@db:5432/postgres
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  analytics:
+    image: supabase/logflare:1.14.2 ## Versão do Supabase Analytics
+
+    networks:
+      - traefik_public ## Nome da rede interna
+    
+    environment:
+    ## Configuração de Banco de Dados
+      - DB_USERNAME=supabase_admin
+      - DB_DATABASE=_supabase
+      - DB_HOSTNAME=db
+      - DB_PORT=5432
+      - DB_PASSWORD=faa77387489e42266f6a25159a01999d
+      - DB_SCHEMA=_analytics
+    
+    ## Configuração do Postgres Backend
+      - POSTGRES_BACKEND_URL=postgresql://supabase_admin:faa77387489e42266f6a25159a01999d@db:5432/_supabase
+      - POSTGRES_BACKEND_SCHEMA=_analytics
+    
+    ## Configuração do Logflare
+      - LOGFLARE_NODE_HOST=127.0.0.1
+      - LOGFLARE_API_KEY=90b9b3ed554daf369a5c7d1963c2e175
+      - LOGFLARE_PUBLIC_ACCESS_TOKEN=67752e3eac0c8e5e39bc4bcaf50d37c6
+      - LOGFLARE_PRIVATE_ACCESS_TOKEN=90b9b3ed554daf369a5c7d1963c2e175
+      - LOGFLARE_SINGLE_TENANT=true
+      - LOGFLARE_SUPABASE_MODE=true
+      - LOGFLARE_MIN_CLUSTER_SIZE=1
+      - LOGFLARE_FEATURE_FLAG_OVERRIDE=multibackend=true
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  db:
+    image: supabase/postgres:15.8.1.060 ## Versão do Supabase Db
+    command:
+      - postgres
+      - '-c'
+      - config_file=/etc/postgresql/postgresql.conf
+      - '-c'
+      - log_min_messages=fatal
+    
+    volumes:
+      - /root/supabase/docker/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
+      - /root/supabase/docker/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      - /root/supabase/docker/volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      - /root/supabase/docker/volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - /root/supabase/docker/volumes/db/data:/var/lib/postgresql/data:Z
+      - /root/supabase/docker/volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
+      - /root/supabase/docker/volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
+      - /root/supabase/docker/volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - supabase_db_config:/etc/postgresql-custom
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração do PostgreSQL
+      - POSTGRES_HOST=/var/run/postgresql
+      - PGPORT=5432
+      - POSTGRES_PORT=5432
+      - PGPASSWORD=faa77387489e42266f6a25159a01999d
+      - POSTGRES_PASSWORD=faa77387489e42266f6a25159a01999d
+      - POSTGRES_DB=postgres
+      - PGDATABASE=postgres
+
+    ## Configuração de JWT
+      - JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - JWT_EXP=31536000  ## O padrão é 3600
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  vector:
+    image: timberio/vector:0.28.1-alpine ## Versão do Supabase Vector
+    command:
+      - '--config'
+      - etc/vector/vector.yml
+    
+    volumes:
+    - /root/supabase/docker/volumes/logs/vector.yml:/etc/vector/vector.yml:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração do Logflare
+      - LOGFLARE_API_KEY=90b9b3ed554daf369a5c7d1963c2e175
+      - LOGFLARE_PUBLIC_ACCESS_TOKEN=67752e3eac0c8e5e39bc4bcaf50d37c6
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  supavisor:
+    image: supabase/supavisor:2.5.1 ## Versão do Supabase Supavisor
+    command:
+      - /bin/sh
+      - -c
+      - /app/bin/migrate && /app/bin/supavisor eval "$$(cat /etc/pooler/pooler.exs)" && /app/bin/server
+
+
+    volumes:
+      -  /root/supabase/docker/volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+    ## Configuração do Banco de Dados
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=faa77387489e42266f6a25159a01999d
+      - DATABASE_URL=ecto://supabase_admin:faa77387489e42266f6a25159a01999d@db:5432/_supabase
+      - CLUSTER_POSTGRES=true
+
+    ## Configuração de JWT
+      - API_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+      - METRICS_JWT_SECRET=7935f8804faa7f4dd0e529d6f1ad330a2b1a2f97
+
+    ## Configuração de Segurança
+      - SECRET_KEY_BASE=cf96beba9fc224339857257718b610d1280d2aa519b6cecd3a8a7de2c002f7d7
+      - VAULT_ENC_KEY=fIjDG8w2hEy1GcZ3NF9WVs4oNNDBWHUW
+      ## O valor a cima era para ser: fIjDG8w2hEy1GcZ3NF9WVs4oNNDBWHUW
+      ## Mas por algum motivo não funciona kkkk
+
+    ## Configuração de Regionalização
+      - REGION=local
+
+    ## Configuração de Erlang
+      - ERL_AFLAGS=-proto_dist inet_tcp
+
+    ## Configuração do Pooler
+      - POOLER_TENANT_ID=1
+      - POOLER_DEFAULT_POOL_SIZE=20
+      - POOLER_MAX_CLIENT_CONN=100
+      - POOLER_POOL_MODE=transaction
+      - DB_POOL_SIZE=5
+
+    ## Configuração de Porta
+      - PORT=4000
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  supabase_db_config:
+    external: true
+    name: supabase_db_config
+
+networks:
+  traefik_public: ## Nome da rede interna
+    external: true
+    name: traefik_public ## Nome da rede interna

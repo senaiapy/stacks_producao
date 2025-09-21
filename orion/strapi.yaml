@@ -1,0 +1,106 @@
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  strapi_app:
+    image: strapi/strapi
+
+    volumes:
+      #- strapi_config:/srv/app/config
+      #- strapi_src:/srv/app/src
+      #- strapi_public_uploads:/srv/app/public/uploads
+      - strapi_data:/srv/app
+
+    networks:
+      - traefik_public
+
+    environment:
+      ## Dados MySQL
+      - DATABASE_CLIENT=mysql
+      - DATABASE_HOST=strapi_db
+      - DATABASE_NAME=strapi
+      - DATABASE_PORT=3306
+      - DATABASE_USERNAME=root
+      - DATABASE_PASSWORD=3e4ce00684ff8477bd02b62ece4ed5f8
+
+      ## Secret Keys
+      - JWT_SECRET=e6534f1c463e8c3d6d77b4a368b2b202
+      - ADMIN_JWT_SECRET=a5f4b9575a8dfa321a80945fe0614c96
+      - APP_KEYS=b546803bb387082b2620b35b1ca95870
+
+      ## Outros dados
+      - NODE_ENV=production
+      - STRAPI_TELEMETRY_DISABLED=true
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.strapi.rule=Host(`strapi.b7g.app`)
+        - traefik.http.routers.strapi.entrypoints=web,websecure
+        - traefik.http.routers.strapi.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.strapi.service=strapi
+        - traefik.http.services.strapi.loadbalancer.server.port=1337
+        - traefik.http.services.strapi.loadbalancer.passHostHeader=true
+
+## --------------------------- ORION --------------------------- ##
+
+  strapi_db:
+    image: percona/percona-server:8.0
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci",
+        "--sql-mode=",
+        "--default-authentication-plugin=mysql_native_password",
+        "--max-allowed-packet=512MB"
+      ]
+
+    volumes:
+      - strapi_db:/var/lib/mysql
+
+    networks:
+      - traefik_public
+
+    environment:
+      - MYSQL_ROOT_PASSWORD=3e4ce00684ff8477bd02b62ece4ed5f8
+      - MYSQL_DATABASE=strapi
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  #strapi_config:
+  #  external: true
+  #  name: strapi_config
+  #strapi_src:
+  #  external: true
+  #  name: strapi_src
+  #strapi_public_uploads:
+  #  external: true
+  #  name: strapi_public_uploads
+  strapi_data:
+    external: true
+    name: strapi_data
+  strapi_db:
+    external: true
+    name: strapi_db
+
+networks:
+  traefik_public:
+    external: true
+    name: traefik_public

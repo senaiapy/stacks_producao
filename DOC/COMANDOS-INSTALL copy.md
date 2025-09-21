@@ -299,7 +299,7 @@ password   J40geWtC08VoaUqoZ
       
       gmail password to connect dmaatsjzgzxqxmil
       mardelu.phd
-
+#---------------------------- CHATWOOT
 chatwoot-baileys 
 acceskey BN0t99DuuhNtbkiJQcHP
 secretkey enCejRo4tU9tmvCWa5LuwAfTods0vNfYlOMbXdyB
@@ -311,6 +311,10 @@ chatwoot
 evolutiom
 - S3_ACCESS_KEY=5lsFUYQkaj36mjULwzaC
       - S3_SECRET_KEY=gggQxoMDzHlH9AVOFSdB25lftDSoBnWZgeTFyt6g
+
+chat.b7g.app
+user marcelu.phd@gmail.com
+pass 194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
 
 #-----------------------------N8N
 
@@ -338,3 +342,31 @@ clubdeofertas 1230F54682FF-4CDA-839C-AA9FBCBF910A 595985511359
 ##---------------------------- nginx proxy manager
 user marcelu.phd@gmail.com
 pass @450Ab----28----nproxy
+
+##---------------------------- SMTP
+SMTP_HOST=smtp.gmail.com
+PORT=587
+USER=marcelu.phd@gmail.com
+PASS=dmaatsjzgzxqxmil
+SENDER=marcelu.phd@gmail.com
+
+
+##----------------------STACKS
+cal.b7g.app       calendar  
+chat.b7g.app      chatwoot
+evo.b7g.app       evolution
+minio.b7g.app     minio
+storage.b7g.app   storage minio
+traefik           
+editor.b7g.app    n8n_editor
+n8n_mcp
+editor-webhook    n8n_webhook
+n8n_worker
+nproxy
+pgamdin.b7g.app   pgadmin
+painel.b7g.app     portainer
+postgres
+rabbitmq.b7g.app  rabbitmq
+redis
+strapi.b7g.app    strapi
+supabase.b7g.app  supabase

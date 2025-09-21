@@ -12,11 +12,12 @@ services:
   # ----------------------------------------------------------------
   npm:
     image: 'jc21/nginx-proxy-manager:latest'
-    container_name: nginx-proxy-manager
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+    #container_name: nginx-proxy-manager
     restart: unless-stopped
     # ⚠️ DO NOT map ports 80 or 443 here! Traefik is handling them.
-    ports:
-      - '8181:81' # Map the admin UI to a different host port (e.g., http://your-server-ip:8181)
+    #ports:
+    #  - '8181:81' # Map the admin UI to a different host port (e.g., http://your-server-ip:8181)
     volumes:
       - /var/data/npm/data:/data
       - /var/data/npm/letsencrypt:/etc/letsencrypt

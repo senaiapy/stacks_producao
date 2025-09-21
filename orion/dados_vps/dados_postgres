@@ -1,0 +1,7 @@
+[ POSTGRES ]
+
+Dominio do postgres: postgres://postgres:5432
+
+Usuario: postgres
+
+Senha: 2c2d8d329e6a7d9424e7a3e06d341215

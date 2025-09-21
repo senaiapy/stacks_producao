@@ -1,0 +1,48 @@
+version: "3.7"
+services:  
+
+## --------------------------- ORION --------------------------- ##
+
+  pgadmin:
+    image: dpage/pgadmin4:latest ## Versão do PgAdmin 4
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+    networks:
+      - traefik_public ## Nome da rede interna
+
+    environment:
+      ## Dados de Acesso
+      - PGADMIN_DEFAULT_EMAIL=marcelu.phd@gmail.com
+      - PGADMIN_DEFAULT_PASSWORD=@450Ab6606289828pgadmin
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.pgadmin.rule=Host(`pgadmin.b7g.app`) ## Url da Ferramenta
+        - traefik.http.services.pgadmin.loadbalancer.server.port=80
+        - traefik.http.routers.pgadmin.service=pgadmin
+        - traefik.http.routers.pgadmin.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.pgadmin.entrypoints=websecure
+        - traefik.http.routers.pgadmin.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  pgadmin_data:
+    external: true
+    
+networks:
+  traefik_public: ## Nome da rede interna
+    name: traefik_public ## Nome da rede interna
+    external: true

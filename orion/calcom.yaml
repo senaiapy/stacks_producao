@@ -1,0 +1,86 @@
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  calcom:
+    image: calcom/cal.com:v4.7.8
+
+    networks:
+      - traefik_public
+
+    environment:
+    ## Licenças
+      - NEXT_PUBLIC_LICENSE_CONSENT=agree
+      - LICENSE=agree
+      #- CALCOM_LICENSE_KEY= ## Descomente este campo caso tenha licença do mesmo
+
+    ## URLs
+      - NEXT_PUBLIC_WEBAPP_URL=https://cal.b7g.app
+      - BASE_URL=https://cal.b7g.app
+      - NEXTAUTH_URL=https://cal.b7g.app
+      - NEXT_PUBLIC_CONSOLE_URL=https://cal.b7g.app
+      - NEXT_PUBLIC_APP_URL=https://cal.b7g.app
+      - NEXT_PUBLIC_WEBSITE_URL=https://cal.b7g.app
+      - WEB_APP=https://cal.b7g.app
+
+    ## Encrypition
+      - NEXTAUTH_SECRET=c459746c94e5e508cf8dbc449ce4ca76 
+      - CALENDSO_ENCRYPTION_KEY=c459746c94e5e508cf8dbc449ce4ca76
+
+    ## Dados Postgress
+      - DATABASE_URL=postgresql://postgres:2c2d8d329e6a7d9424e7a3e06d341215@postgres:5432/calcom
+      - DATABASE_DIRECT_URL=postgresql://postgres:2c2d8d329e6a7d9424e7a3e06d341215@postgres:5432/calcom
+      - CALENDSO_ENCRYPTION_KEY=postgresql://postgres:2c2d8d329e6a7d9424e7a3e06d341215@postgres:5432/calcom
+
+    ## Configurações de Email e SMTP
+      - EMAIL_FROM=marcelu.phd@gmail.com
+      - EMAIL_SERVER_HOST=smtp.gmail.com
+      - EMAIL_SERVER_PORT=587
+      - EMAIL_SERVER_USER=marcelu.phd@gmail.com
+      - EMAIL_SERVER_PASSWORD=dmaatsjzgzxqxmil
+
+    ## Nodes
+      - NODE_ENV=production
+      #- NODE_TLS_REJECT_UNAUTHORIZED=0
+
+    ## Brand
+      #- NEXT_PUBLIC_APP_NAME="Cal.com"
+      #- NEXT_PUBLIC_SUPPORT_MAIL_ADDRESS="help@cal.com"
+      #- NEXT_PUBLIC_COMPANY_NAME="Cal.com, Inc."
+      #- NEXT_PUBLIC_DISABLE_SIGNUP=false ## false = novas inscrições permitidas | true = novas incrições fechadas
+
+    ## Integração com Google (Calendario & Meet)
+      #-GOOGLE_LOGIN_ENABLED=false
+      #-GOOGLE_API_CREDENTIALS=
+
+    ## Integração com Microsoft 365
+      #- MS_GRAPH_CLIENT_ID=
+      #- MS_GRAPH_CLIENT_SECRET=
+
+    ## Integração com Zoom
+      #- ZOOM_CLIENT_ID=
+      #- ZOOM_CLIENT_SECRET=
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+        - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.calcom_app.rule=Host(`cal.b7g.app`)
+        - traefik.http.routers.calcom_app.entrypoints=websecure
+        - traefik.http.routers.calcom_app.priority=1
+        - traefik.http.routers.calcom_app.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.calcom_app.service=calcom_app
+        - traefik.http.services.calcom_app.loadbalancer.server.port=3000
+        - traefik.http.services.calcom_app.loadbalancer.passHostHeader=1
+
+## --------------------------- ORION --------------------------- ##
+
+networks:
+  traefik_public:
+    name: traefik_public
+    external: true
