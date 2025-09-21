@@ -85,14 +85,14 @@ docker stack deploy --prune --resolve-image always -c traefik.yaml traefik
 ### 4.1 PostgreSQL  ###########################################################
 **Credenciais:**
 - **Porta:** 5432
-- **Usuário:** chatwoot_database
-- **Senha:** Ma1x1x0x!!Ma1x1x0x!!
-- **Database Principal:** chatwoot_database
+- **Usuário:** [CONFIGURE_YOUR_USERNAME]
+- **Senha:** [CONFIGURE_YOUR_PASSWORD]
+- **Database Principal:** [CONFIGURE_YOUR_DATABASE]
 
 **Configuração:**
 ```bash
 # Acessar PostgreSQL
-psql -U chatwoot_database -d chatwoot_database
+psql -U [YOUR_USERNAME] -d [YOUR_DATABASE]
 
 # Habilitar extensão vector
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -111,15 +111,15 @@ CREATE DATABASE supabase_db;
 ### 4.2 Redis  #######################################################################
 **Credenciais:**
 - **Porta:** 6379
-- **Senha:** J40geWtC08VoaUqoZ
+- **Senha:** [CONFIGURE_YOUR_REDIS_PASSWORD]
 
 ### 4.3 MinIO (Storage S3) #############################################################
 **Credenciais:**
-- **Usuário:** marceluphd
-- **Senha:** 1:7khB-=2898
+- **Usuário:** [CONFIGURE_YOUR_MINIO_USER]
+- **Senha:** [CONFIGURE_YOUR_MINIO_PASSWORD]
 - **URLs:**
-  - Server: https://files.senaia.in
-  - Console: https://minio.senaia.in
+  - Server: https://files.yourdomain.com
+  - Console: https://minio.yourdomain.com
 
 **Configuração:**
 ```bash
@@ -135,11 +135,11 @@ mkdir -p /var/data/minio
 
 ### 5.1 Configuração
 **Credenciais:**
-- **Usuário:** marcelu.phd@gmail.com
-- **Senha:** @450A...0628....n8n
-- **Encryption Key:** KRpMlPWMaRCeL0Ehy6sHuYYweuLes4RT
+- **Usuário:** [CONFIGURE_YOUR_EMAIL]
+- **Senha:** [CONFIGURE_YOUR_PASSWORD]
+- **Encryption Key:** [GENERATE_32_CHAR_KEY]
 
-**Gmail App Password:** dmaatsjzgzxqxmil
+**Gmail App Password:** [CONFIGURE_YOUR_APP_PASSWORD]
 
 ### 5.2 Stacks para Deploy
 ```bash
@@ -159,18 +159,18 @@ Instalar via Settings > Plugins:
 
 ### 6.1 Configuração
 **Credenciais:**
-- **Usuário:** marcelu.phd@gmail.com
-- **Senha:** @450A...0628....chatwoot
-- **API Key:** VfQrr8ruFjVjarMgADhLtnnw
-- **SECRET_KEY_BASE:** 194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+- **Usuário:** [CONFIGURE_YOUR_EMAIL]
+- **Senha:** [CONFIGURE_YOUR_PASSWORD]
+- **API Key:** [GENERATE_API_KEY]
+- **SECRET_KEY_BASE:** [GENERATE_64_CHAR_SECRET]
 
 **MinIO Keys (Chatwoot):**
-- **Access Key:** YLBhnYvXT1vsOqlWh9Ml
-- **Secret Key:** 8IvkSaEjjEjAPOzioeIxGQWkKkVFqQUVH97s3UpB
+- **Access Key:** [GENERATE_MINIO_ACCESS_KEY]
+- **Secret Key:** [GENERATE_MINIO_SECRET_KEY]
 
 **MinIO Keys (Chatwoot-Baileys):**
-- **Access Key:** BN0t99DuuhNtbkiJQcHP
-- **Secret Key:** enCejRo4tU9tmvCWa5LuwAfTods0vNfYlOMbXdyB
+- **Access Key:** [GENERATE_BAILEYS_ACCESS_KEY]
+- **Secret Key:** [GENERATE_BAILEYS_SECRET_KEY]
 
 ### 6.2 Migração (OBRIGATÓRIA)
 ```bash
@@ -178,7 +178,7 @@ Instalar via Settings > Plugins:
 docker stack deploy -c chatwoot-portainer.yml chatwoot-migrate
 
 # 2. Aguardar conclusão e verificar tabelas
-psql -U chatwoot_database -d chatwoot_db -c "\dt"
+psql -U [YOUR_USERNAME] -d [YOUR_DATABASE] -c "\dt"
 
 # 3. Remover stack de migração
 docker stack rm chatwoot-migrate
@@ -191,21 +191,21 @@ docker stack deploy -c chatwoot.yml chatwoot
 
 ### 7.1 Configuração
 **Credenciais:**
-- **URL:** evo.senaia.in
-- **Senha:** LcXEtOWi3xX0HNFY4EbMT9sPWcMbT1nu
+- **URL:** evo.yourdomain.com
+- **Senha:** [CONFIGURE_YOUR_EVOLUTION_PASSWORD]
 
 **MinIO Keys (Evolution):**
-- **Access Key:** 5lsFUYQkaj36mjULwzaC
-- **Secret Key:** gggQxoMDzHlH9AVOFSdB25lftDSoBnWZgeTFyt6g
+- **Access Key:** [GENERATE_EVOLUTION_ACCESS_KEY]
+- **Secret Key:** [GENERATE_EVOLUTION_SECRET_KEY]
 
 **Instância Configurada:**
-- **Nome:** clubdeofertas
-- **ID:** 1230F54682FF-4CDA-839C-AA9FBCBF910A
-- **Telefone:** 595985511359
+- **Nome:** [YOUR_INSTANCE_NAME]
+- **ID:** [GENERATE_INSTANCE_ID]
+- **Telefone:** [YOUR_PHONE_NUMBER]
 
 ### 7.2 Integração com Chatwoot
 1. Ativar botão de integração Chatwoot
-2. URL do Chatwoot: https://chat.senaia.in
+2. URL do Chatwoot: https://chat.yourdomain.com
 3. Configurar API token do Chatwoot
 4. Dias de importação: 7
 5. Ativar autocreate
@@ -214,8 +214,8 @@ docker stack deploy -c chatwoot.yml chatwoot
 
 ### 8.1 Configuração
 **Credenciais:**
-- **Usuário:** marcelu.phd@gmail.com (padrão: admin@example.com)
-- **Senha:** @450Ab----28----nproxy (padrão: changeme)
+- **Usuário:** [CONFIGURE_YOUR_EMAIL] (padrão: admin@example.com)
+- **Senha:** [CONFIGURE_YOUR_PASSWORD] (padrão: changeme)
 - **Porta:** 8181
 
 ### 8.2 Preparação
@@ -228,7 +228,7 @@ mkdir -p /var/data/npm/letsencrypt
 docker stack deploy -c nproxy.yml nginx-proxy
 ```
 # http access
-http://217.79.184.8:8181/
+http://YOUR_SERVER_IP:8181/
 
 ## ☁️ 9. Supabase #############################################################################
 
@@ -262,13 +262,13 @@ Database criada: `supabase_db`
 
 ## 🌍 11. Domínios Configurados
 
-- **Painel:** painel.senaia.in (Portainer)
-- **Files:** files.senaia.in (MinIO Server)
-- **MinIO Console:** minio.senaia.in
-- **Editor:** editor.senaia.in (N8N)
-- **Workflow:** workflow.senaia.in (N8N)
-- **Chat:** chat.senaia.in (Chatwoot)
-- **Evolution:** evo.senaia.in
+- **Painel:** painel.yourdomain.com (Portainer)
+- **Files:** files.yourdomain.com (MinIO Server)
+- **MinIO Console:** minio.yourdomain.com
+- **Editor:** editor.yourdomain.com (N8N)
+- **Workflow:** workflow.yourdomain.com (N8N)
+- **Chat:** chat.yourdomain.com (Chatwoot)
+- **Evolution:** evo.yourdomain.com
 
 ## ⚠️ 12. Observações Importantes
 
@@ -294,3 +294,4 @@ Database criada: `supabase_db`
 ---
 
 **📝 Nota:** Este manual contém informações sensíveis. Mantenha-o seguro e atualize as credenciais conforme necessário.
+

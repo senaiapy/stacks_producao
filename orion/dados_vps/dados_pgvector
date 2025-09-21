@@ -1,7 +1,0 @@
-[ PGVECTOR ]
-
-Dominio do pgvector: postgres://pgvector:5432
-
-Usuario: postgres
-
-Senha: 3e6a2e1d5861027de8327f2145bab206

@@ -28,6 +28,27 @@ This is a Docker Swarm production stack for WhatsApp Business automation and cus
 
 ## Common Commands
 
+### Quick Stack Management
+```bash
+# Deploy all infrastructure services in parallel
+docker stack deploy -c portainer.yml portainer && \
+docker stack deploy -c traefik.yml traefik && \
+docker stack deploy -c postgres.yml postgres && \
+docker stack deploy -c redis.yml redis && \
+docker stack deploy -c minio.yml minio
+
+# Deploy all N8N services in parallel
+docker stack deploy -c n8n_editor.yml n8n-editor && \
+docker stack deploy -c n8n_webhook.yml n8n-webhook && \
+docker stack deploy -c n8n_worker.yml n8n-worker && \
+docker stack deploy -c n8n_mcp.yml n8n-mcp
+
+# Restart all services in a stack (useful for configuration updates)
+for service in $(docker service ls --filter label=com.docker.stack.namespace=STACK_NAME --format "{{.Name}}"); do
+  docker service update --force $service
+done
+```
+
 ### Docker Swarm Management
 ```bash
 # Initialize swarm (replace with your server IP)
@@ -117,8 +138,9 @@ docker stack deploy -c chatwoot.yml chatwoot
 
 ### Database Operations
 ```bash
-# Access PostgreSQL
-docker exec -it POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database
+# Access PostgreSQL (find container dynamically)
+POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
+docker exec -it $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database
 
 # Create required databases
 CREATE DATABASE n8n_database;
@@ -133,11 +155,18 @@ CREATE EXTENSION IF NOT EXISTS vector;
 # List all databases
 \l
 
-# Test Redis connection
-docker exec -it REDIS_CONTAINER redis-cli ping
+# Test Redis connection (find container dynamically)
+REDIS_CONTAINER=$(docker ps -q -f name=redis)
+docker exec -it $REDIS_CONTAINER redis-cli -a J40geWtC08VoaUqoZ ping
 
 # Test PostgreSQL connection
-psql -U chatwoot_database -d chatwoot_database -c "SELECT 1"
+psql -h localhost -U chatwoot_database -d chatwoot_database -c "SELECT 1"
+
+# Database backup
+docker exec $POSTGRES_CONTAINER pg_dump -U chatwoot_database chatwoot_database > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Database restore
+cat backup_file.sql | docker exec -i $POSTGRES_CONTAINER psql -U chatwoot_database -d chatwoot_database
 ```
 
 ### Security Key Generation
@@ -287,3 +316,58 @@ docker stats
 - Traefik handles SSL termination with automatic certificates
 - PostgreSQL and Redis are not exposed externally
 - Regular security updates should be applied to base images
+
+## Environment-Specific Commands
+
+### System Preparation (Production Setup)
+```bash
+# Set timezone (adjust as needed)
+sudo timedatectl set-timezone America/Asuncion
+
+# Install system dependencies
+sudo apt-get update && apt-get install -y apparmor-utils sshpass
+
+# Configure hostname
+hostnamectl set-hostname YOUR_HOSTNAME
+echo "127.0.0.1 YOUR_HOSTNAME" >> /etc/hosts
+
+# Create required directories
+sudo mkdir -p /var/data/minio /var/data/npm
+sudo chown -R $USER:docker /var/data/minio
+```
+
+### Development and Testing
+```bash
+# Quick health check for all services
+docker service ls --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+
+# Monitor service resources
+docker stats --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
+
+# Check service placement across nodes
+docker service ps $(docker service ls -q) --format "table {{.Name}}\t{{.Node}}\t{{.CurrentState}}"
+
+# View aggregated logs for troubleshooting
+docker service logs --tail=50 --follow SERVICE_NAME 2>&1 | grep -E "(ERROR|WARN|FATAL)"
+```
+
+### Configuration Validation
+```bash
+# Validate YAML files before deployment
+for file in *.yml; do
+  echo "Validating $file..."
+  docker-compose -f "$file" config > /dev/null && echo "✓ Valid" || echo "✗ Invalid"
+done
+
+# Check DNS resolution for all configured domains
+for domain in painel.senaia.in minio.senaia.in chat.senaia.in evo.senaia.in editor.senaia.in; do
+  echo "Checking $domain..."
+  nslookup $domain || echo "DNS issue for $domain"
+done
+
+# Verify SSL certificate status
+for domain in painel.senaia.in minio.senaia.in chat.senaia.in evo.senaia.in editor.senaia.in; do
+  echo "SSL status for $domain:"
+  curl -I -s --connect-timeout 5 https://$domain | head -n 1
+done
+```
