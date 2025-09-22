@@ -9,6 +9,9 @@ services:
     networks:
       - traefik_public
 
+    #depends_on:
+    #  - postgres
+
     environment:
     ## Licenças
       - NEXT_PUBLIC_LICENSE_CONSENT=agree
@@ -31,7 +34,6 @@ services:
     ## Dados Postgress
       - DATABASE_URL=postgresql://postgres:6751e826ba4f6b8f4e8640001316d85f@postgres:5432/calcom
       - DATABASE_DIRECT_URL=postgresql://postgres:6751e826ba4f6b8f4e8640001316d85f@postgres:5432/calcom
-      - CALENDSO_ENCRYPTION_KEY=postgresql://postgres:6751e826ba4f6b8f4e8640001316d85f@postgres:5432/calcom
 
     ## Configurações de Email e SMTP
       - EMAIL_FROM=marcelu.phd@gmail.com
@@ -42,6 +44,10 @@ services:
 
     ## Nodes
       - NODE_ENV=production
+      - PORT=3001  # Use port 3001 instead of 3000 to avoid conflict
+      - NEXT_PUBLIC_WEBAPP_PORT=3001  # Inform Next.js about the new port
+      - HOST=0.0.0.0  # Bind to all interfaces
+      - NEXT_PUBLIC_VERCEL_URL=https://cal.senaia.in
       #- NODE_TLS_REJECT_UNAUTHORIZED=0
 
     ## Brand
@@ -75,7 +81,7 @@ services:
         - traefik.http.routers.calcom_app.priority=1
         - traefik.http.routers.calcom_app.tls.certresolver=letsencryptresolver
         - traefik.http.routers.calcom_app.service=calcom_app
-        - traefik.http.services.calcom_app.loadbalancer.server.port=3000
+        - traefik.http.services.calcom_app.loadbalancer.server.port=3001
         - traefik.http.services.calcom_app.loadbalancer.passHostHeader=1
 
 ## --------------------------- ORION --------------------------- ##

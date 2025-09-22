@@ -60,12 +60,12 @@ services:
       - CHATWOOT_ENABLED=true
       - CHATWOOT_MESSAGE_READ=true
       - CHATWOOT_MESSAGE_DELETE=true
-      - CHATWOOT_IMPORT_DATABASE_CONNECTION_URI=postgresql://postgres:SENHA_DO_PGVECTOR@pgvector:5432/chatwoot?sslmode=disable
+      - CHATWOOT_IMPORT_DATABASE_CONNECTION_URI=postgresql://postgres:5531fb71736bebeddca5abc3b385c812@pgvector:5433/chatwoot?sslmode=disable
       - CHATWOOT_IMPORT_PLACEHOLDER_MEDIA_MESSAGE=false
       
     ## 🧊 Configuração do Cache
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://evolution_redis:6379/1
+      - CACHE_REDIS_URI=redis://evolution_redis:6380/1
       - CACHE_REDIS_PREFIX_KEY=evolution
       - CACHE_REDIS_SAVE_INSTANCES=false
       - CACHE_LOCAL_ENABLED=false
@@ -205,7 +205,7 @@ services:
         "--appendonly",
         "yes",
         "--port",
-        "6379"
+        "6380"
       ]
 
     volumes:
@@ -216,7 +216,7 @@ services:
 
     ## Descomente as linhas abaixo para uso externo
     #ports:
-    #  - 6379:6379
+    #  - 6380:6380
 
     deploy:
       placement:

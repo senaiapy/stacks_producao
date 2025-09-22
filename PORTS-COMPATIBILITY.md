@@ -213,6 +213,85 @@ The current stack configuration demonstrates excellent port management with prop
 
 ---
 
+  🚀 Deployment Steps to Fix 404:
+
+  Step 1: Database Setup
+
+  Cal.com needs a database to be created and migrated:
+
+  # Create Cal.com database
+  docker exec -it $(docker ps -q -f name=postgres) psql -U postgres -c ""
+
+  # Grant permissions (if needed)
+  docker exec -it $(docker ps -q -f name=postgres) psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE calcom TO postgres;"
+
+  Step 2: Redeploy Cal.com Service
+
+  # Deploy with fixed configuration
+  docker stack deploy -c calcom.yaml calcom
+
+  # Wait for service to start
+  sleep 30
+
+  # Check service status
+  docker service ps calcom_calcom
+
+  Step 3: Run Database Migrations
+
+  Cal.com requires database migrations to run:
+
+  # Run migrations (Cal.com should do this automatically, but if not...)
+  docker service logs calcom_calcom | grep -i migration
+
+  # If migrations fail, you might need to run them manually:
+  docker exec -it $(docker ps -q -f name=calcom) npm run db:migrate
+
+  🔍 Troubleshooting Commands:
+
+  Check Service Health:
+
+  # Service status
+  docker service ls | grep calcom
+  docker service ps calcom_calcom
+
+  # Service logs
+  docker service logs calcom_calcom
+
+  # Check if port 3001 is responding
+  curl -I http://localhost:3001
+
+  Verify Database Connection:
+
+  # Test database connection
+  docker exec -it $(docker ps -q -f name=postgres) psql -U postgres -d calcom -c "SELECT 1"
+
+  # Check if Cal.com tables exist
+  docker exec -it $(docker ps -q -f name=postgres) psql -U postgres -d calcom -c "\dt"
+
+  DNS and SSL Check:
+
+  # Check DNS resolution
+  nslookup cal.senaia.in
+
+  # Test HTTPS certificate
+  curl -I https://cal.senaia.in
+
+  🎯 Most Likely Causes of 404:
+
+  1. Database not initialized - Cal.com needs migrations to run
+  2. Service startup failure - Check logs for errors
+  3. SSL certificate issues - Check Traefik logs
+  4. Network connectivity - Verify service is on traefik_public network
+
+● The main issue was the incorrect CALENDSO_ENCRYPTION_KEY configuration that was pointing to a database URL instead of being an
+  encryption key. This would cause Cal.com to fail during startup.
+
+  Next Steps:
+  1. Ensure the calcom database exists in PostgreSQL
+  2. Redeploy the service with the fixed configuration
+  3. Check service logs to verify it's starting properly
+  4. Test the URL again after deployment
+
 **Document Version**: 1.0
 **Last Updated**: September 20, 2025
 **Next Review**: October 20, 2025

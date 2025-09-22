@@ -17,9 +17,9 @@ services:
     networks:
       - traefik_public ## Nome da rede interna
 
-    ## Descomente as linhas abaixo para uso externo
-    #ports:
-    #  - 5433:5432
+    ## External port access to avoid conflict with main postgres
+    ports:
+      - 5433:5432
 
     environment:
       ## 🔑 Senha do Postgres 

@@ -32,7 +32,7 @@ services:
 
     ## Integração com Logflare
       - LOGFLARE_API_KEY=5a06283c4e4a7ecedf176c76bfafe268
-      - LOGFLARE_URL=http://analytics:4000
+      - LOGFLARE_URL=http://analytics:4001
       - LOGFLARE_PRIVATE_ACCESS_TOKEN=5a06283c4e4a7ecedf176c76bfafe268
 
     ## Configurações de Autenticação
@@ -61,6 +61,13 @@ services:
 
     networks:
       - traefik_public ## Nome da rede interna
+
+    depends_on:
+      - auth
+      - rest
+      - realtime
+      - storage
+      - meta
 
     environment:
     ## Configuração de usuário e senha do Dashboard
@@ -199,7 +206,7 @@ services:
     
     environment:
     ## Configuração da API Realtime
-      - PORT=4000
+      - PORT=4002
       - API_JWT_SECRET=a3cb2dcdffbdbc1f7e196b4b707be45f8a64635b
       - SECRET_KEY_BASE=d6e169dbe0496194d4e0c82aa14d4b4e6bfb42a00277b05ed3c223756d93136f
       - APP_NAME=realtime
@@ -377,6 +384,7 @@ services:
       - POSTGRES_BACKEND_SCHEMA=_analytics
     
     ## Configuração do Logflare
+      - PORT=4001  # Set analytics port to 4001 to avoid conflict
       - LOGFLARE_NODE_HOST=127.0.0.1
       - LOGFLARE_API_KEY=5a06283c4e4a7ecedf176c76bfafe268
       - LOGFLARE_PUBLIC_ACCESS_TOKEN=a21e6e27c4a299acdf343d17657140c7
@@ -403,7 +411,7 @@ services:
       - config_file=/etc/postgresql/postgresql.conf
       - '-c'
       - log_min_messages=fatal
-    
+
     volumes:
       - /root/supabase/docker/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       - /root/supabase/docker/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
@@ -417,6 +425,10 @@ services:
 
     networks:
       - traefik_public ## Nome da rede interna
+
+    ## External port access to avoid conflict with main postgres and pgvector
+    ports:
+      - 5434:5432
 
     environment:
     ## Configuração do PostgreSQL

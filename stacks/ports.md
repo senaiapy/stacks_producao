@@ -164,15 +164,17 @@ supabase.yaml     → supavisor service   → port 4000
 # supabase.yaml modifications
 services:
   realtime:
-    # Keep port 4000
-
+       environment:
+      - PORT=4002  # Change to port 4002
+      
   analytics:
     environment:
       - PORT=4001  # Change to port 4001
 
   supavisor:
-    environment:
-      - PORT=4002  # Change to port 4002
+     # Keep port 4000
+
+ 
 ```
 
 ---
