@@ -1,0 +1,458 @@
+version: "3.8"
+
+services:
+## --------------------------- CHATWOOT WITH BAILEYS --------------------------- ##
+
+  # Chatwoot Rails Application
+  chatwoot_rails:
+    image: 'ghcr.io/fazer-ai/chatwoot:latest'
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network      # Internal communication with databases
+      - traefik_public   # External exposure via Traefik
+
+    volumes:
+      - chatwoot_storage:/app/storage
+      - chatwoot_public:/app/public
+      - chatwoot_mailer:/app/app/views/devise/mailer
+      - chatwoot_mailers:/app/app/views/mailers
+
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - DEFAULT_LOCALE=pt_BR
+      - TZ=America/Sao_Paulo
+
+      # Base Configuration
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=https://chat.b7g.app
+      - INTERNAL_HOST_URL=http://chatwoot_rails:3000
+      - FORCE_SSL=true
+      - ENABLE_ACCOUNT_SIGNUP=false
+      - INSTALLATION_NAME=paraguays
+
+      # Database Configuration
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=3e6a2e1d5861027de8327f2145bab206
+      - POSTGRES_DATABASE=chatwoot_production
+      - POSTGRES_PORT=5432
+
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=
+
+      # Baileys Provider Configuration
+      - BAILEYS_PROVIDER_DEFAULT_CLIENT_NAME=-Chatwoot
+      - BAILEYS_PROVIDER_DEFAULT_URL=http://baileys_api:3025
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - BAILEYS_PROVIDER_USE_INTERNAL_HOST_URL=true
+
+      # Storage Configuration
+      - ACTIVE_STORAGE_SERVICE=local
+
+      # Email Configuration
+      - MAILER_SENDER_EMAIL=marcelu.phd@gmail.com <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_SSL=false
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=LcXEtOWi3xX0HNFY4EbMT9sPWcMbT1nu194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=marcelu.phd@gmail.com
+
+      # Performance Configuration
+      - SIDEKIQ_CONCURRENCY=10
+      - RACK_TIMEOUT_SERVICE_TIMEOUT=0
+      - RAILS_MAX_THREADS=5
+      - WEB_CONCURRENCY=2
+      - ENABLE_RACK_ATTACK=false
+      - RAILS_LOG_TO_STDOUT=true
+      - USE_INBOX_AVATAR_FOR_BOT=true
+
+    entrypoint: docker/entrypoints/rails.sh
+    command:
+      sh -c "bundle exec rails db:chatwoot_prepare &&
+             bundle exec rails branding:update &&
+             if [ -n \"$${BRAND_ASSETS_URL}\" ]; then deployment/extract_brand_assets.sh \"$${BRAND_ASSETS_URL}\"; fi &&
+             bundle exec rails s -p 3000 -b 0.0.0.0"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "1.0"
+          memory: 1024M
+
+      # Traefik Labels
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.chatwoot_app.rule=Host(`chat.b7g.app`)
+        - traefik.http.routers.chatwoot_app.entrypoints=websecure
+        - traefik.http.routers.chatwoot_app.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.chatwoot_app.priority=1
+        - traefik.http.routers.chatwoot_app.service=chatwoot_app
+        - traefik.http.services.chatwoot_app.loadbalancer.server.port=3000
+        - traefik.http.services.chatwoot_app.loadbalancer.passHostHeader=true
+        - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.routers.chatwoot_app.middlewares=sslheader
+
+      update_config:
+        parallelism: 1
+        delay: 60s
+        order: stop-first
+        failure_action: rollback
+        monitor: 120s
+
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 3
+        window: 120s
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- --header=\"Accept: text/html\" http://127.0.0.1:3000/ || exit 1"]
+      interval: 60s
+      timeout: 20s
+      retries: 10
+      start_period: 120s
+
+## --------------------------- SIDEKIQ WORKER --------------------------- ##
+
+  chatwoot_sidekiq:
+    image: 'ghcr.io/fazer-ai/chatwoot:latest'
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    volumes:
+      - chatwoot_storage:/app/storage
+      - chatwoot_public:/app/public
+      - chatwoot_mailer:/app/app/views/devise/mailer
+      - chatwoot_mailers:/app/app/views/mailers
+
+    environment:
+      # Node/Rails Environment
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - DEFAULT_LOCALE=pt_BR
+      - TZ=America/Sao_Paulo
+
+      # Base Configuration
+      - SECRET_KEY_BASE=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - FRONTEND_URL=https://chat.b7g.app
+      - INTERNAL_HOST_URL=http://chatwoot_rails:3000
+      - FORCE_SSL=false
+      - ENABLE_ACCOUNT_SIGNUP=false
+      - INSTALLATION_NAME=paraguays
+
+      # Database Configuration
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=3e6a2e1d5861027de8327f2145bab206
+      - POSTGRES_DATABASE=chatwoot_production
+      - POSTGRES_PORT=5432
+
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=
+
+      # Baileys Provider Configuration
+      - BAILEYS_PROVIDER_DEFAULT_CLIENT_NAME=-Chatwoot
+      - BAILEYS_PROVIDER_DEFAULT_URL=http://baileys_api:3025
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - BAILEYS_PROVIDER_USE_INTERNAL_HOST_URL=true
+
+      # Storage Configuration
+      - ACTIVE_STORAGE_SERVICE=local
+
+      # Email Configuration
+      - MAILER_SENDER_EMAIL=marcelu.phd@gmail.com <marcelu.phd@gmail.com>
+      - SMTP_DOMAIN=gmail.com
+      - SMTP_ADDRESS=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_SSL=false
+      - SMTP_USERNAME=marcelu.phd@gmail.com
+      - SMTP_PASSWORD=LcXEtOWi3xX0HNFY4EbMT9sPWcMbT1nu194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+      - SMTP_AUTHENTICATION=login
+      - SMTP_ENABLE_STARTTLS_AUTO=true
+      - SMTP_OPENSSL_VERIFY_MODE=peer
+      - MAILER_INBOUND_EMAIL_DOMAIN=marcelu.phd@gmail.com
+
+      # Performance Configuration
+      - SIDEKIQ_CONCURRENCY=10
+      - RACK_TIMEOUT_SERVICE_TIMEOUT=0
+      - RAILS_MAX_THREADS=5
+      - WEB_CONCURRENCY=2
+      - ENABLE_RACK_ATTACK=false
+      - RAILS_LOG_TO_STDOUT=true
+      - USE_INBOX_AVATAR_FOR_BOT=true
+
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1536M
+        reservations:
+          cpus: "0.5"
+          memory: 768M
+
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+        monitor: 60s
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep sidekiq | grep -v grep || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+## --------------------------- BAILEYS API --------------------------- ##
+
+  baileys_api:
+    image: 'ghcr.io/fazer-ai/baileys-api:latest'
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+      - traefik_public
+
+    volumes:
+      - chatwoot_storage:/app/storage
+
+    environment:
+      # Node Environment
+      - NODE_ENV=production
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+
+      # Logging Configuration
+      - LOG_LEVEL=info
+      - BAILEYS_LOG_LEVEL=error
+
+      # API Configuration
+      - BAILEYS_PROVIDER_DEFAULT_API_KEY=194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77
+
+      # CORS and Webhook Configuration
+      - CORS_ORIGIN=*
+      - WEBHOOK_URL=https://chat.b7g.app/webhooks/whatsapp
+      - WEBHOOK_ENABLED=true
+
+    command:
+      - sh
+      - "-c"
+      - "bun manage-api-keys create user 194F83A5E420E2898283782FE1E64C2E7C07B5C3F7409BA90138E2D1E658BD77 && bun start"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "1.0"
+          memory: 1024M
+
+      # Traefik Labels for Baileys API
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.baileys_api.rule=Host(`baileys-api.b7g.app`)
+        - traefik.http.routers.baileys_api.entrypoints=websecure
+        - traefik.http.routers.baileys_api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.baileys_api.service=baileys_api
+        - traefik.http.services.baileys_api.loadbalancer.server.port=3025
+        - traefik.http.services.baileys_api.loadbalancer.passHostHeader=true
+        - traefik.http.middlewares.baileys_headers.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.routers.baileys_api.middlewares=baileys_headers
+
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 3
+        window: 120s
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3025/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+## --------------------------- DATABASES --------------------------- ##
+
+  postgres:
+    image: 'ghcr.io/fazer-ai/postgres-16-pgvector:latest'
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=3e6a2e1d5861027de8327f2145bab206
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "1.0"
+          memory: 1024M
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres -d chatwoot || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: 'redis:7-alpine'
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+
+    networks:
+      - app_network
+
+    volumes:
+      - redis_data:/data
+
+    command:
+      - sh
+      - '-c'
+      - 'redis-server --appendonly yes --port 6379'
+
+    environment:
+      - REDIS_PASSWORD=
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h localhost -p 6379 ping | grep PONG || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+## --------------------------- NETWORKS AND VOLUMES --------------------------- ##
+
+networks:
+  # Internal network for service-to-service communication
+  app_network:
+    external: true
+  # Public network for Traefik reverse proxy
+  traefik_public:
+    external: true
+
+volumes:
+  # PostgreSQL data persistence
+  postgres_data:
+    external: true
+    name: postgres_data
+
+  # Redis data persistence
+  redis_data:
+    external: true
+    name: redis_data
+
+  # Chatwoot application volumes
+  chatwoot_storage:
+    external: true
+    name: chatwoot_storage
+
+  chatwoot_public:
+    external: true
+    name: chatwoot_public
+
+  chatwoot_mailer:
+    external: true
+    name: chatwoot_mailer
+
+  chatwoot_mailers:
+    external: true
+    name: chatwoot_mailers
