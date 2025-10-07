@@ -1,0 +1,8 @@
+# stop all stacks
+docker service rm $(docker service ls -q)
+docker system prune -a -f
+    docker system prune --all --force --volumes
+            docker swarm leave --force
+
+            
+sudo systemctl stop xc_vm  
