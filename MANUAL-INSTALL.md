@@ -13,7 +13,7 @@ Este manual contém todos os procedimentos e credenciais para instalação compl
 ```bash
 sudo apt-get update && apt-get upgrade -y 
 
-sudo apt-get install  zip unzip curl git apt-transport-https net-tools libcurl4-openssl-dev nmon htop ufw locales  nmap zsh nodejs npm ca-certificates  systemd-timesyncd   software-properties-common libxslt1-dev libcurl4 libgeoip-dev  apparmor-utils sshpass -y
+sudo apt-get install  zip unzip curl git apt-transport-https net-tools libcurl4-openssl-dev nmon htop ufw locales  nmap zsh nodejs npm ca-certificates  systemd-timesyncd   software-properties-common libxslt1-dev libcurl4 libgeoip-dev  apparmor-utils pytho3-pip sshpass -y
 
 ```
 ### 1.2 Configuração de Fuso Horário
@@ -242,7 +242,8 @@ docker stack deploy -c nproxy.yml nginx-proxy
 http://YOUR_SERVER_IP:8181/
 
 ## ☁️ 9. Supabase #############################################################################
-
+#### OPEN PORTAS 8000 5432 3000 4000 6543 7946 2377
+### 9.0 Configuraçãoope
 ### 9.1 Configuração
 **Portas:**
 - **Supabase:** 8000

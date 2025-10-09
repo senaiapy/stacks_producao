@@ -20,6 +20,7 @@ This is a Docker Swarm production stack for WhatsApp Business automation and cus
 - **Chatwoot**: Customer service platform
 - **Evolution API**: WhatsApp Business integration
 - **Portainer**: Docker Swarm management interface
+- **Supabase**: Open-source Firebase alternative (simplified deployment with Studio, REST API, Auth)
 
 ### Network Architecture
 - `traefik_public`: External network for Traefik reverse proxy
@@ -102,11 +103,84 @@ docker stack deploy -c evolution.yml evolution
 # 6. Optional services
 docker stack deploy -c calendar.yml calendar
 docker stack deploy -c strapi.yml strapi
-docker stack deploy -c supabase.yml supabase
 docker stack deploy -c pgadmin.yml pgadmin
 docker stack deploy -c rabbitmq.yml rabbitmq
 docker stack deploy -c nproxy.yml nginx-proxy
+
+# Supabase (requires special configuration - see Supabase section below)
+docker stack deploy -c stacks/supabase.yml supabase
 ```
+
+### Supabase Deployment (Special Configuration Required)
+
+Supabase is deployed as a simplified stack with minimal services. For complete deployment and management, use the automated Python manager.
+
+#### Automated Deployment (Recommended)
+```bash
+# Deploy to remote server
+cd supabase
+python3 supabase_manager.py status        # Check service status
+python3 supabase_manager.py troubleshoot  # Auto-diagnose and fix issues
+python3 supabase_manager.py logs          # View service logs
+python3 supabase_manager.py remove        # Remove stack (preserves configs)
+python3 supabase_manager.py help          # Show all commands
+```
+
+#### Manual Deployment
+```bash
+# 1. Deploy the stack
+docker stack deploy -c stacks/supabase.yml supabase
+
+# 2. Verify deployment
+docker service ls | grep supabase
+
+# 3. Check service logs
+docker service logs supabase_studio
+docker service logs supabase_auth
+docker service logs supabase_rest
+```
+
+#### Supabase Architecture
+The simplified Supabase stack includes:
+- **db**: PostgreSQL 15 (uses custom port 25432)
+- **studio**: Supabase Studio web UI (port 3000)
+- **rest**: PostgREST API (port 3000)
+- **auth**: GoTrue authentication service (port 9999)
+- **supabase-proxy**: Nginx proxy for main domain access
+
+#### Supabase Access URLs
+- **Main URL**: https://supabase.senaia.in (proxies to Studio)
+- **Studio**: https://studio.senaia.in
+- **API**: https://api.senaia.in
+- **Auth**: https://auth.senaia.in
+
+#### Supabase Configuration
+- **Database**: Uses custom port 25432 to avoid conflicts
+- **JWT Secret**: DV7ztkuZnEJWWKQ68haLZ2qIXCMRxODz
+- **Organization**: SENAIA
+- **Project**: SENAIA_AI
+- **Database Connection**: postgres:Ma1x1x0x_testing@db:25432/postgres
+
+#### Common Supabase Issues
+```bash
+# Services showing 0/1
+docker service update --force supabase_studio
+docker service update --force supabase_auth
+
+# Check database connection
+docker exec $(docker ps -q -f name=supabase_db) psql -U postgres -p 25432 -c "SELECT 1"
+
+# Restart entire stack
+docker stack rm supabase
+sleep 30
+docker stack deploy -c stacks/supabase.yml supabase
+```
+
+#### Supabase Management Files
+- [supabase/supabase_manager.py](supabase/supabase_manager.py): Automated deployment and troubleshooting script
+- [supabase/SUPABASE-COMPLETE-MANUAL.md](supabase/SUPABASE-COMPLETE-MANUAL.md): Complete deployment manual (Portuguese)
+- [supabase/portainer/deploy.sh](supabase/portainer/deploy.sh): Bash deployment script
+- [stacks/supabase.yml](stacks/supabase.yml): Simplified Docker Swarm stack configuration
 
 ### Chatwoot Migration (Required Before Deployment)
 ```bash
@@ -213,7 +287,7 @@ All services are configured with `senaia.in` domains. Update these in the respec
 - Evolution: `evo.seudominio.com`
 - Calendar: `agenda.seudominio.com`
 - Strapi: `strapi.seudominio.com`
-- Supabase: `supabase.seudominio.com`
+- Supabase: `supabase.seudominio.com`, `studio.seudominio.com`, `api.seudominio.com`, `auth.seudominio.com`
 - PGAdmin: `pgadmin.seudominio.com`
 - RabbitMQ: `rabbitmq.seudominio.com`
 
@@ -226,7 +300,7 @@ All services are configured with `senaia.in` domains. Update these in the respec
 - N8N: 5678
 - Chatwoot: 3030
 - Evolution: 8080
-- Supabase: 8000 (API), 3032 (Studio)
+- Supabase: 3000 (Studio/REST), 9999 (Auth), 25432 (DB)
 - RabbitMQ: 5672 (AMQP), 15672 (Management)
 - Strapi: 1337
 - Calendar: 3000
