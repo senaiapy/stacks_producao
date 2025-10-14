@@ -13,7 +13,7 @@ Este manual contém todos os procedimentos e credenciais para instalação compl
 ```bash
 sudo apt-get update && apt-get upgrade -y 
 
-sudo apt-get install  zip unzip curl git apt-transport-https net-tools libcurl4-openssl-dev nmon htop ufw locales  nmap zsh nodejs npm ca-certificates  systemd-timesyncd   software-properties-common libxslt1-dev libcurl4 libgeoip-dev  apparmor-utils pytho3-pip sshpass -y
+sudo apt-get install  zip unzip curl git apt-transport-https net-tools libcurl4-openssl-dev nmon htop ufw locales  nmap zsh nodejs npm ca-certificates  systemd-timesyncd   software-properties-common libxslt1-dev libcurl4 libgeoip-dev  apparmor-utils python3-pip sshpass -y
 
 ```
 ### 1.2 Configuração de Fuso Horário
