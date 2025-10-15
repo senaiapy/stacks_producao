@@ -165,6 +165,7 @@ docker stack deploy -c n8n_worker.yml n8n-worker
 Instalar via Settings > Plugins:
 - `n8n-nodes-evolution-api`
 - `@devlikeapro/n8n-nodes-chatwoot`
+- `@johnlindquist/n8n-nodes-claudecode`
 
 ## 💬 6. Chatwoot (Atendimento) ##############################################################
 
