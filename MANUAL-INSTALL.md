@@ -152,6 +152,17 @@ mkdir -p /var/data/minio
 
 **Gmail App Password:** [CONFIGURE_YOUR_APP_PASSWORD]
 
+### ADD THIS TIMEOUT TO LONG DATABASES IN N8N DOCKER FILE
+    # MCP timeout configurations
+      - MCP_REQUEST_TIMEOUT=120000          # Timeout in milliseconds (default: 10000)
+      - MCP_CONNECTION_TIMEOUT=30000       # Connection timeout in ms
+      - MCP_SERVER_TIMEOUT=120000           # Server response timeout
+      
+      # Alternative generic timeout settings
+      - N8N_MCP_TIMEOUT=120000
+      - REQUEST_TIMEOUT=120000
+      
+
 ### 5.2 Stacks para Deploy
 ```bash
 # Implantar na ordem:

@@ -80,6 +80,15 @@ services:
       - TZ=America/Sao_Paulo
       - N8N_DEFAULT_LOCALE=pt-BR
 
+    # MCP timeout configurations
+      - MCP_REQUEST_TIMEOUT=120000          # Timeout in milliseconds (default: 10000)
+      - MCP_CONNECTION_TIMEOUT=30000       # Connection timeout in ms
+      - MCP_SERVER_TIMEOUT=120000           # Server response timeout
+      
+      # Alternative generic timeout settings
+      - N8N_MCP_TIMEOUT=120000
+      - REQUEST_TIMEOUT=120000
+      
     deploy:
       mode: replicated
       replicas: 1
@@ -177,6 +186,15 @@ services:
       - GENERIC_TIMEZONE=America/Sao_Paulo
       - TZ=America/Sao_Paulo
       - N8N_DEFAULT_LOCALE=pt-BR
+      
+    # MCP timeout configurations
+      - MCP_REQUEST_TIMEOUT=120000          # Timeout in milliseconds (default: 10000)
+      - MCP_CONNECTION_TIMEOUT=30000       # Connection timeout in ms
+      - MCP_SERVER_TIMEOUT=120000           # Server response timeout
+      
+      # Alternative generic timeout settings
+      - N8N_MCP_TIMEOUT=120000
+      - REQUEST_TIMEOUT=120000
       
     deploy:
       mode: replicated
