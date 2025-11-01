@@ -1,0 +1,154 @@
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: always
+    ports:
+      - "127.0.0.1:5682:5682"
+    environment:
+      - N8N_HOST=n8n.senaia-bank.in
+      - N8N_PORT=5682
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.senaia-bank.in/
+      - NODE_ENV=production
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - GENERIC_TIMEZONE=America/Asuncion
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=Ma1x1x10x!!Ma1x1x0x!!
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - N8N_EXECUTIONS_MODE=queue
+#  Uncomment if you need proxy
+#      - HTTP_PROXY=http://user:pass@host:port
+#      - HTTPS_PROXY=http://user:pass@host:port
+#      - NO_PROXY=localhost,127.0.0.1,postgres,redis,n8n-network
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./local-files:/files
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - n8n-network
+
+  n8n-worker:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: always
+    command: worker
+    environment:
+      - N8N_HOST=n8n.senaia-bank.in
+      - NODE_ENV=production
+      - GENERIC_TIMEZONE=America/Asuncion
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=Ma1x1x10x!!Ma1x1x0x!!
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+#  Uncomment if you need proxy
+#      - HTTP_PROXY=http://user:pass@host:port
+#      - HTTPS_PROXY=http://user:pass@host:port
+#      - NO_PROXY=localhost,127.0.0.1,postgres,redis,n8n-network
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./local-files:/files
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - n8n-network
+
+  n8n-worker-0:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: always
+    command: worker
+    environment:
+      - N8N_HOST=n8n.senaia-bank.in
+      - NODE_ENV=production
+      - GENERIC_TIMEZONE=America/Asuncion
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=Ma1x1x10x!!Ma1x1x0x!!
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+#  Uncomment if you need proxy
+#      - HTTP_PROXY=http://user:pass@host:port
+#      - HTTPS_PROXY=http://user:pass@host:port
+#      - NO_PROXY=localhost,127.0.0.1,postgres,redis,n8n-network
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./local-files:/files
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - n8n-network
+
+
+  n8n-worker-1:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: always
+    command: worker
+    environment:
+      - N8N_HOST=n8n.senaia-bank.in
+      - NODE_ENV=production
+      - GENERIC_TIMEZONE=America/Asuncion
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=Ma1x1x10x!!Ma1x1x0x!!
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+#  Uncomment if you need proxy
+#      - HTTP_PROXY=http://user:pass@host:port
+#      - HTTPS_PROXY=http://user:pass@host:port
+#      - NO_PROXY=localhost,127.0.0.1,postgres,redis,n8n-network
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./local-files:/files
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - n8n-network
+
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=Ma1x1x10x!!Ma1x1x0x!!
+      - POSTGRES_DB=n8n
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./pg_backup:/backup
+    networks:
+      - n8n-network
+
+  redis:
+    image: redis:7
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - n8n-network
+
+volumes:
+  n8n_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  n8n-network:
+    driver: bridge
